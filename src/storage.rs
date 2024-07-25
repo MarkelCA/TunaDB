@@ -6,7 +6,7 @@ use anyhow::Context;
 
 pub trait BinaryEngine {
     fn set(&mut self, key: &str, value: &str);
-    fn get(&self, key: &str) -> Option<String>;
+    fn get(&mut self, key: &str) -> Option<String>;
 }
 
 fn open_file(file_path: &str) -> File {
@@ -93,8 +93,45 @@ impl BinaryEngineV1 {
 }
 
 impl BinaryEngine for BinaryEngineV1 {
-    fn get(&self, key: &str) -> Option<String> {
-        unimplemented!()
+    fn get(&mut self, key: &str) -> Option<String> {
+        let mut value: Option<String> = None;
+        self.file
+            .seek(std::io::SeekFrom::Start(1))
+            .with_context(|| format!("Seeking to start of data in file"))
+            .expect("Couldn't seek to start");
+
+        loop {
+            let mut key_length_buffer = [0; 1];
+            let _ = self.file.read_exact(&mut key_length_buffer);
+            let key_length = key_length_buffer[0] as usize;
+
+            let mut current_key: Vec<u8> = Vec::with_capacity(key_length as usize);
+            current_key.resize(key_length as usize, 0);
+
+            let _ = self.file.read_exact(&mut current_key);
+
+            let current_key_str = String::from_utf8(current_key).unwrap();
+
+            if current_key_str != key {
+                continue;
+            }
+
+            let mut value_length_buffer = [0; 2];
+            let _ = self.file.read_exact(&mut value_length_buffer);
+            let value_length = u16::from_be_bytes(value_length_buffer);
+
+            let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
+            current_value.resize(value_length as usize, 0);
+
+            let _ = self.file.read_exact(&mut current_value);
+            let value_str = String::from_utf8(current_value).unwrap();
+
+            value = Some(value_str);
+
+            break;
+        }
+
+        value
     }
 
     fn set(&mut self, key: &str, value: &str) {
