@@ -1,6 +1,8 @@
 const ENCODING_VERSION: u8 = 1;
-use std::io::Read;
+use std::io::{Read, Seek};
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
+
+use anyhow::Context;
 
 pub trait Engine {
     fn set(&mut self, key: &str, value: &str);
@@ -8,13 +10,12 @@ pub trait Engine {
 }
 
 fn open_file(file_path: &str) -> File {
-    let mut file_options = OpenOptions::new();
-    file_options.append(true).write(true).read(true);
-
     let file_exists = Path::new(file_path).exists();
+    let mut open_options = OpenOptions::new();
+    let mut file_options = open_options.append(true).write(true).read(true);
 
     if !file_exists {
-        file_options = file_options.create_new(true).append(true).clone();
+        file_options = file_options.create(true)
     }
 
     let mut file = file_options.open(file_path).expect("Couldn't open file");
@@ -33,11 +34,16 @@ pub struct BinaryEngineV1 {
 }
 
 pub fn match_version(file_path: &str) -> Box<dyn Engine> {
-    println!("Opening file: {}", file_path);
     let mut file = open_file(file_path);
     let mut version = [0; 1];
-    println!("Reading version {:?}", version);
+
+    // We reset the file cursor to the start of the file
+    file.seek(std::io::SeekFrom::Start(0))
+        .with_context(|| format!("Seeking to start of file {}", file_path))
+        .expect("Couldn't seek to start");
+
     file.read_exact(&mut version)
+        .with_context(|| format!("Reading encoding version from file {}", file_path))
         .expect("Couldn't read version");
 
     match version[0] {
@@ -50,8 +56,7 @@ pub fn match_version(file_path: &str) -> Box<dyn Engine> {
 impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Self {
         println!("Using BinaryEngineV1");
-        let file_exists = Path::new(file_path).exists();
-        let mut file = open_file(file_path);
+        let file = open_file(file_path);
 
         BinaryEngineV1 { file }
     }
