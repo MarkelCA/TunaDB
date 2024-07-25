@@ -1,4 +1,5 @@
 use clap::Parser;
+use storage::Engine;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -12,23 +13,28 @@ struct CliArgs {
 fn main() {
     let args = CliArgs::parse();
 
-    let mut w = storage::Writer::new(&args.file_name);
-    w.write(&args.key, &args.value);
-
-    println!("file_name: {}", args.file_name);
+    let mut engine = storage::BinaryEngine::new(&args.file_name);
+    engine.set(&args.key, &args.value);
+    // engine.get(&args.key);
 }
 
 mod storage {
+    pub trait Engine {
+        fn new(file_path: &str) -> Self;
+        fn set(&mut self, key: &str, value: &str);
+        fn get(&self, key: &str) -> Option<String>;
+    }
+
     const ENCODING_VERSION: u8 = 1;
 
     use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
-    pub struct Writer {
+    pub struct BinaryEngine {
         file: File,
     }
 
-    impl Writer {
-        pub fn new(file_path: &str) -> Writer {
+    impl Engine for BinaryEngine {
+        fn new(file_path: &str) -> Self {
             let mut file_options = OpenOptions::new();
             file_options.append(true).write(true);
 
@@ -45,13 +51,30 @@ mod storage {
                 }
             }
 
-            Writer { file }
+            BinaryEngine { file }
         }
 
-        pub fn write(&mut self, key: &str, value: &str) {
-            let serialized = String::from(format!("{}{}{}{}", key.len(), key, value.len(), value));
+        fn get(&self, key: &str) -> Option<String> {
+            unimplemented!()
+        }
 
-            if let Err(e) = self.file.write(serialized.as_bytes()) {
+        fn set(&mut self, key: &str, value: &str) {
+            let mut bytes = Vec::with_capacity(1 + key.len() + 2 + value.len());
+
+            // Add the length of the key (1 byte)
+            bytes.push(key.len() as u8);
+            // Add the key bytes
+            bytes.extend_from_slice(key.as_bytes());
+
+            // Add the length of the value (2 bytes, zero-padded)
+            let value_len = value.len() as u16;
+            bytes.push((value_len >> 8) as u8); // High byte
+            bytes.push((value_len & 0xFF) as u8); // Low byte
+
+            // Add the value bytes
+            bytes.extend_from_slice(value.as_bytes());
+
+            if let Err(e) = self.file.write_all(&bytes) {
                 eprintln!("Couldn't write to file: {}", e);
             }
         }
