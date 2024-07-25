@@ -4,7 +4,7 @@ use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::Context;
 
-pub trait Engine {
+pub trait BinaryEngine {
     fn set(&mut self, key: &str, value: &str);
     fn get(&self, key: &str) -> Option<String>;
 }
@@ -29,11 +29,43 @@ fn open_file(file_path: &str) -> File {
     file
 }
 
+/**
+* BinaryEngineV1 is an implementation of the BinaryEngine
+* trait that uses a binary encoding format to store key-value
+* pairs in a file.
+*
+* The encoding format is as follows:
+* byte 0: encoding version (1)
+* byte 1: length of key (1 byte)
+* bytes 2..n: key
+* bytes n+1..n+2: length of value (2 bytes, big-endian)
+* bytes n+3..n+3+m: value
+* where n is the length of the key and m is the length of the value
+* in bytes.
+*
+* Example:
+*   01 03 6b 65 79 00 05 76 61 6c 75 65
+*   encoding version: 1
+*   key length: 3
+*   key: "key"
+*   value length: 5
+*   value: "value"
+*
+* Note: the encoding version is stored as a single byte.
+* Note: the length of the key is stored as a single byte.
+* Note: the length of the value is stored as a 16-bit unsigned integer.
+* Note: the key and value are stored as UTF-8 strings.
+*/
 pub struct BinaryEngineV1 {
     file: File,
 }
 
-pub fn match_version(file_path: &str) -> Box<dyn Engine> {
+/**
+* Factory method for BinaryEngine instances. It reads
+* the encoding version from the file (first byte) and
+* returns the appropriate BinaryEngine implementation.
+*/
+pub fn new_engine(file_path: &str) -> Box<dyn BinaryEngine> {
     let mut file = open_file(file_path);
     let mut version = [0; 1];
 
@@ -48,21 +80,19 @@ pub fn match_version(file_path: &str) -> Box<dyn Engine> {
 
     match version[0] {
         1 => Box::new(BinaryEngineV1::new(file_path)),
-        2 => Box::new(BinaryEngineV2::new(file_path)),
-        _ => panic!("Unsupported version"),
+        _ => panic!("Unsupported encoding version ({})", version[0]),
     }
 }
 
 impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Self {
-        println!("Using BinaryEngineV1");
         let file = open_file(file_path);
 
         BinaryEngineV1 { file }
     }
 }
 
-impl Engine for BinaryEngineV1 {
+impl BinaryEngine for BinaryEngineV1 {
     fn get(&self, key: &str) -> Option<String> {
         unimplemented!()
     }
@@ -86,28 +116,5 @@ impl Engine for BinaryEngineV1 {
         if let Err(e) = self.file.write_all(&bytes) {
             eprintln!("Couldn't write to file: {}", e);
         }
-    }
-}
-
-struct BinaryEngineV2 {
-    file: File,
-}
-
-impl BinaryEngineV2 {
-    pub fn new(file_path: &str) -> Self {
-        println!("Using BinaryEngineV2");
-        BinaryEngineV2 {
-            file: open_file(file_path),
-        }
-    }
-}
-
-impl Engine for BinaryEngineV2 {
-    fn get(&self, key: &str) -> Option<String> {
-        unimplemented!()
-    }
-
-    fn set(&mut self, key: &str, value: &str) {
-        unimplemented!()
     }
 }
