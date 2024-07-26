@@ -40,3 +40,13 @@ pub fn parse() -> Config {
     let contents = fs::read_to_string(config_file.to_str().unwrap()).unwrap();
     toml::from_str(&contents).unwrap()
 }
+
+pub fn set_file_path(file_path: String) {
+    let config_dir = home::home_dir().unwrap().join(".config").join("sallydb");
+    let config_file = config_dir.join("config.toml");
+
+    let config = Config { file_path };
+
+    let toml = toml::to_string(&config).unwrap();
+    fs::write(config_file.to_str().unwrap(), toml).unwrap();
+}
