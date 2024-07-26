@@ -1,1 +1,1 @@
-workspace = { members = [ "cli","core"] }
+workspace = { members = [ "cli","core", "tcp"] }
