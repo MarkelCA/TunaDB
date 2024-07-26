@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.10", features = ["derive"] }
+home = "0.5.9"
+serde = { version = "1.0.204", features = ["derive"] }
+toml = "0.8.16"
