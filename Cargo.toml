@@ -1,15 +1,1 @@
-[package]
-name = "sdb"
-description = "SallyDB. A simple database for storing key-value pairs"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-anyhow = "1.0.86"
-clap = { version = "4.5.10", features = ["derive"] }
-home = "0.5.9"
-serde = { version = "1.0.204", features = ["derive"] }
-toml = "0.8.16"
-
+workspace = { members = [ "cli","core"] }

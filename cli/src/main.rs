@@ -7,8 +7,10 @@ struct CliArgs {
     command: Command,
 }
 
-mod config;
-mod storage;
+extern crate core;
+
+use core::config;
+use core::storage;
 
 #[derive(Parser, Debug)]
 enum Command {
