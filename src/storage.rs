@@ -1,10 +1,11 @@
 const ENCODING_VERSION: u8 = 1;
+
 use std::io::{Read, Seek};
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::Context;
 
-pub trait BinaryEngine {
+pub trait Engine {
     fn set(&mut self, key: &str, value: &str);
     fn get(&mut self, key: &str) -> Option<String>;
 }
@@ -30,7 +31,7 @@ fn open_file(file_path: &str) -> File {
 }
 
 /**
-* BinaryEngineV1 is an implementation of the BinaryEngine
+* BinaryEngineV1 is an implementation of the Engine
 * trait that uses a binary encoding format to store key-value
 * pairs in a file.
 *
@@ -61,11 +62,11 @@ pub struct BinaryEngineV1 {
 }
 
 /**
-* Factory method for BinaryEngine instances. It reads
+* Factory method for Engine instances. It reads
 * the encoding version from the file (first byte) and
-* returns the appropriate BinaryEngine implementation.
+* returns the appropriate Engine implementation.
 */
-pub fn new_engine(file_path: &str) -> Box<dyn BinaryEngine> {
+pub fn new_engine(file_path: &str) -> Box<dyn Engine> {
     let mut file = open_file(file_path);
     let mut version = [0; 1];
 
@@ -80,6 +81,7 @@ pub fn new_engine(file_path: &str) -> Box<dyn BinaryEngine> {
 
     match version[0] {
         1 => Box::new(BinaryEngineV1::new(file_path)),
+        2 => Box::new(LSMTreeEngine::new(file_path)),
         _ => panic!("Unsupported encoding version ({})", version[0]),
     }
 }
@@ -92,7 +94,7 @@ impl BinaryEngineV1 {
     }
 }
 
-impl BinaryEngine for BinaryEngineV1 {
+impl Engine for BinaryEngineV1 {
     fn get(&mut self, key: &str) -> Option<String> {
         let mut value: Option<String> = None;
         self.file
@@ -153,5 +155,30 @@ impl BinaryEngine for BinaryEngineV1 {
         if let Err(e) = self.file.write_all(&bytes) {
             eprintln!("Couldn't write to file: {}", e);
         }
+    }
+}
+
+/**
+* Uses a LSM-tree to store key-value pairs in a file.
+*/
+struct LSMTreeEngine {
+    file: File,
+}
+
+impl LSMTreeEngine {
+    pub fn new(file_path: &str) -> Self {
+        let file = open_file(file_path);
+
+        LSMTreeEngine { file }
+    }
+}
+
+impl Engine for LSMTreeEngine {
+    fn get(&mut self, key: &str) -> Option<String> {
+        unimplemented!()
+    }
+
+    fn set(&mut self, key: &str, value: &str) {
+        unimplemented!()
     }
 }
