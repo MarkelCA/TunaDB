@@ -28,7 +28,15 @@ enum Command {
 #[derive(Parser, Debug)]
 enum ConfigCommand {
     Get,
-    Set { key: String, value: String },
+    Set {
+        #[clap(subcommand)]
+        command: SetConfigCommand,
+    },
+}
+
+#[derive(Parser, Debug)]
+enum SetConfigCommand {
+    FilePath { value: String },
 }
 
 fn main() {
@@ -44,13 +52,11 @@ fn main() {
         },
         Command::Config { command } => match command {
             ConfigCommand::Get => println!("{:#?}", config),
-            ConfigCommand::Set { key, value } => {
-                if key == "file_path" {
+            ConfigCommand::Set { command } => match command {
+                SetConfigCommand::FilePath { value } => {
                     config::set_file_path(value);
-                } else {
-                    println!("Invalid key");
                 }
-            }
+            },
         },
         Command::Set { key, value } => {
             engine.set(&key, &value);
