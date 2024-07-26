@@ -10,6 +10,7 @@ use anyhow::Context;
 pub trait Engine {
     fn set(&mut self, key: &str, value: &str);
     fn get(&mut self, key: &str) -> Option<String>;
+    fn list(&mut self) -> Vec<String>;
 }
 
 fn open_file(file_path: &str) -> File {
@@ -156,6 +157,42 @@ impl Engine for BinaryEngineV1 {
             eprintln!("Couldn't write to file: {}", e);
         }
     }
+
+    fn list(&mut self) -> Vec<String> {
+        let mut keys: Vec<String> = Vec::new();
+
+        self.file
+            .seek(std::io::SeekFrom::Start(1))
+            .with_context(|| format!("Seeking to start of data in file"))
+            .expect("Couldn't seek to start");
+
+        let file_size = self.file.metadata().unwrap().len();
+        while self.file.stream_position().unwrap() < file_size {
+            let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
+            let _ = self.file.read_exact(&mut key_length_buffer);
+            let key_length = key_length_buffer[0] as usize;
+
+            let mut current_key: Vec<u8> = Vec::with_capacity(key_length as usize);
+            current_key.resize(key_length as usize, 0);
+
+            let _ = self.file.read_exact(&mut current_key);
+
+            let current_key_str = String::from_utf8(current_key).unwrap();
+
+            keys.push(current_key_str);
+
+            let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
+            let _ = self.file.read_exact(&mut value_length_buffer);
+            let value_length = u16::from_be_bytes(value_length_buffer);
+
+            let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
+            current_value.resize(value_length as usize, 0);
+
+            let _ = self.file.read_exact(&mut current_value);
+            let _ = String::from_utf8(current_value).unwrap();
+        }
+        keys
+    }
 }
 
 /**
@@ -179,6 +216,10 @@ impl Engine for LSMTreeEngine {
     }
 
     fn set(&mut self, key: &str, value: &str) {
+        unimplemented!()
+    }
+
+    fn list(&mut self) -> Vec<String> {
         unimplemented!()
     }
 }

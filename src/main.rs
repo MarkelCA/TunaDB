@@ -23,6 +23,7 @@ enum Command {
         #[clap(subcommand)]
         command: ConfigCommand,
     },
+    List,
 }
 
 #[derive(Parser, Debug)]
@@ -48,7 +49,7 @@ fn main() {
     match args.command {
         Command::Get { key } => match engine.get(&key) {
             Some(value) => println!("{}", value),
-            None => println!("{} not found", key),
+            None => println!("(nil)"),
         },
         Command::Config { command } => match command {
             ConfigCommand::Get => println!("{:#?}", config),
@@ -60,6 +61,11 @@ fn main() {
         },
         Command::Set { key, value } => {
             engine.set(&key, &value);
+        }
+        Command::List => {
+            for key in engine.list() {
+                println!("{}", key);
+            }
         }
     }
 }
