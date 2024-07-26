@@ -1,4 +1,6 @@
 const ENCODING_VERSION: u8 = 1;
+const KEY_LENGTH_SIZE: usize = 1;
+const VALUE_LENGTH_SIZE: usize = 2;
 
 use std::io::{Read, Seek};
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
@@ -102,8 +104,10 @@ impl Engine for BinaryEngineV1 {
             .with_context(|| format!("Seeking to start of data in file"))
             .expect("Couldn't seek to start");
 
-        loop {
-            let mut key_length_buffer = [0; 1];
+        let file_size = self.file.metadata().unwrap().len();
+
+        while self.file.stream_position().unwrap() < file_size {
+            let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut key_length_buffer);
             let key_length = key_length_buffer[0] as usize;
 
@@ -114,11 +118,7 @@ impl Engine for BinaryEngineV1 {
 
             let current_key_str = String::from_utf8(current_key).unwrap();
 
-            if current_key_str != key {
-                continue;
-            }
-
-            let mut value_length_buffer = [0; 2];
+            let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut value_length_buffer);
             let value_length = u16::from_be_bytes(value_length_buffer);
 
@@ -128,16 +128,16 @@ impl Engine for BinaryEngineV1 {
             let _ = self.file.read_exact(&mut current_value);
             let value_str = String::from_utf8(current_value).unwrap();
 
-            value = Some(value_str);
-
-            break;
+            if current_key_str == key {
+                value = Some(value_str);
+            }
         }
-
         value
     }
 
     fn set(&mut self, key: &str, value: &str) {
-        let mut bytes = Vec::with_capacity(1 + key.len() + 2 + value.len());
+        let mut bytes =
+            Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len());
 
         // Add the length of the key (1 byte)
         bytes.push(key.len() as u8);

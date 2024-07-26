@@ -15,7 +15,7 @@ fn main() {
     let args = CliArgs::parse();
 
     let mut engine = storage::new_engine(&args.file_name);
-    engine.set(&args.key, &args.value);
+    // engine.set(&args.key, &args.value);
     match engine.get(&args.key) {
         Some(value) => println!("{}: {}", args.key, value),
         None => println!("{} not found", args.key),
