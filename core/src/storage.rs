@@ -2,6 +2,7 @@ const ENCODING_VERSION: u8 = 1;
 const KEY_LENGTH_SIZE: usize = 1;
 const VALUE_LENGTH_SIZE: usize = 2;
 
+use std::collections::HashSet;
 use std::io::{Read, Seek};
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
@@ -11,7 +12,7 @@ pub trait Engine {
     fn set(&mut self, key: &str, value: &str);
     fn delete(&mut self, key: &str);
     fn get(&mut self, key: &str) -> Option<String>;
-    fn list(&mut self) -> Vec<String>;
+    fn list(&mut self) -> HashSet<String>;
 }
 
 fn open_file(file_path: &str) -> File {
@@ -167,8 +168,8 @@ impl Engine for BinaryEngineV1 {
         }
     }
 
-    fn list(&mut self) -> Vec<String> {
-        let mut keys: Vec<String> = Vec::new();
+    fn list(&mut self) -> HashSet<String> {
+        let mut keys: HashSet<String> = HashSet::new();
 
         self.file
             .seek(std::io::SeekFrom::Start(1))
@@ -188,8 +189,6 @@ impl Engine for BinaryEngineV1 {
 
             let current_key_str = String::from_utf8(current_key).unwrap();
 
-            keys.push(current_key_str);
-
             let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut value_length_buffer);
             let value_length = u16::from_be_bytes(value_length_buffer);
@@ -199,6 +198,10 @@ impl Engine for BinaryEngineV1 {
 
             let mut tombstone = [0; 1];
             let _ = self.file.read_exact(&mut tombstone);
+
+            if tombstone[0] == 0 {
+                keys.insert(current_key_str);
+            }
 
             let _ = self.file.read_exact(&mut current_value);
             let _ = String::from_utf8(current_value).unwrap();
@@ -255,7 +258,7 @@ impl Engine for LSMTreeEngine {
         unimplemented!()
     }
 
-    fn list(&mut self) -> Vec<String> {
+    fn list(&mut self) -> HashSet<String> {
         unimplemented!()
     }
 

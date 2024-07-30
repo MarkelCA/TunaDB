@@ -29,6 +29,7 @@ Usage: sallydb <COMMAND>
 Commands:
   get     Get the value for the specified key
   set     Sets the value for the specified key
+  del     Deletes the specified key
   config  Manages the database configuration
   list    Lists all keys in the database
   help    Print this message or the help of the given subcommand(s)
