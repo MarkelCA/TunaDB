@@ -1,6 +1,6 @@
 # sallydb
 
-Key-value storage written in rust for learning purposes. Right now uses a simple length-prefixed encoding for the binary serialization. But there's plans to use other strategies such as LSM trees.
+Key-value storage written in rust for learning purposes. Working on cli and tcp-server implementations. Right now uses a simple length-prefixed binary encoding format for the storage files, but there's plans to use other strategies such as LSM trees in the future.
 
 ## Build
 
