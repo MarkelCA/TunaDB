@@ -19,6 +19,7 @@ cargo install --path ./tcp
 
 
 ## Usage
+### cli
 ```
 $ sallydb
 SallyDB. A simple key-value storage
