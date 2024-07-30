@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-description = "SallyDB CLI. A simple database for storing key-value pairs"
+description = "SallyDB. A simple key-value storage"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,3 +9,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.10", features = ["derive"] }
 core = {path = "../core"}
+
+[[bin]]
+name = "sallydb"
+path = "src/main.rs"

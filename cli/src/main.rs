@@ -14,17 +14,16 @@ use core::storage;
 
 #[derive(Parser, Debug)]
 enum Command {
-    Get {
-        key: String,
-    },
-    Set {
-        key: String,
-        value: String,
-    },
+    /// Get the value for the specified key
+    Get { key: String },
+    /// Sets the value for the specified key
+    Set { key: String, value: String },
+    /// Manages the database configuration
     Config {
         #[clap(subcommand)]
         command: ConfigCommand,
     },
+    /// Lists all keys in the database
     List,
 }
 
