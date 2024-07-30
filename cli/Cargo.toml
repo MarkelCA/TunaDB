@@ -11,5 +11,5 @@ clap = { version = "4.5.10", features = ["derive"] }
 core = {path = "../core"}
 
 [[bin]]
-name = "sallydb"
+name = "sally"
 path = "src/main.rs"

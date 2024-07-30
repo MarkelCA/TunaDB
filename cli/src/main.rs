@@ -18,6 +18,8 @@ enum Command {
     Get { key: String },
     /// Sets the value for the specified key
     Set { key: String, value: String },
+    /// Deletes the specified key
+    Del { key: String },
     /// Manages the database configuration
     Config {
         #[clap(subcommand)]
@@ -62,6 +64,9 @@ fn main() {
         },
         Command::Set { key, value } => {
             engine.set(&key, &value);
+        }
+        Command::Del { key } => {
+            engine.delete(&key);
         }
         Command::List => {
             for key in engine.list() {

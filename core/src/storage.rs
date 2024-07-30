@@ -9,6 +9,7 @@ use anyhow::Context;
 
 pub trait Engine {
     fn set(&mut self, key: &str, value: &str);
+    fn delete(&mut self, key: &str);
     fn get(&mut self, key: &str) -> Option<String>;
     fn list(&mut self) -> Vec<String>;
 }
@@ -129,7 +130,12 @@ impl Engine for BinaryEngineV1 {
             let _ = self.file.read_exact(&mut current_value);
             let value_str = String::from_utf8(current_value).unwrap();
 
-            if current_key_str == key {
+            let mut tombstone = [0; 1];
+            let _ = self.file.read_exact(&mut tombstone);
+
+            if tombstone[0] == 1 {
+                value = None
+            } else if current_key_str == key {
                 value = Some(value_str);
             }
         }
@@ -138,7 +144,7 @@ impl Engine for BinaryEngineV1 {
 
     fn set(&mut self, key: &str, value: &str) {
         let mut bytes =
-            Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len());
+            Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
 
         // Add the length of the key (1 byte)
         bytes.push(key.len() as u8);
@@ -152,6 +158,9 @@ impl Engine for BinaryEngineV1 {
 
         // Add the value bytes
         bytes.extend_from_slice(value.as_bytes());
+
+        // We add the tombstone byte (not deleted by default)
+        bytes.push(0);
 
         if let Err(e) = self.file.write_all(&bytes) {
             eprintln!("Couldn't write to file: {}", e);
@@ -188,10 +197,37 @@ impl Engine for BinaryEngineV1 {
             let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
             current_value.resize(value_length as usize, 0);
 
+            let mut tombstone = [0; 1];
+            let _ = self.file.read_exact(&mut tombstone);
+
             let _ = self.file.read_exact(&mut current_value);
             let _ = String::from_utf8(current_value).unwrap();
         }
         keys
+    }
+
+    fn delete(&mut self, key: &str) {
+        let mut bytes = Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + 1);
+
+        // Add the length of the key (1 byte)
+        bytes.push(key.len() as u8);
+        // Add the key bytes
+        bytes.extend_from_slice(key.as_bytes());
+
+        // Add the length of the value (2 bytes, zero-padded)
+        let value_len = 1 as u16;
+        bytes.push((value_len >> 8) as u8); // High byte
+        bytes.push((value_len & 0xFF) as u8); // Low byte
+
+        // Add the value bytes
+        bytes.push(0);
+
+        // We add the tombstone byte (deleted)
+        bytes.push(1);
+
+        if let Err(e) = self.file.write_all(&bytes) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
     }
 }
 
@@ -220,6 +256,10 @@ impl Engine for LSMTreeEngine {
     }
 
     fn list(&mut self) -> Vec<String> {
+        unimplemented!()
+    }
+
+    fn delete(&mut self, key: &str) {
         unimplemented!()
     }
 }
