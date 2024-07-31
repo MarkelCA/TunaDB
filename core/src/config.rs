@@ -11,7 +11,7 @@ pub fn parse() -> Config {
     let db_dir = home::home_dir()
         .unwrap()
         .join(".local")
-        .join("share")
+        .join("state")
         .join("sallydb");
 
     let db_file = db_dir.join("sally.db");
