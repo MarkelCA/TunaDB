@@ -196,15 +196,17 @@ impl Engine for BinaryEngineV1 {
             let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
             current_value.resize(value_length as usize, 0);
 
+            let _ = self.file.read_exact(&mut current_value);
+            let _ = String::from_utf8(current_value).unwrap();
+
             let mut tombstone = [0; 1];
             let _ = self.file.read_exact(&mut tombstone);
 
             if tombstone[0] == 0 {
                 keys.insert(current_key_str);
+            } else {
+                keys.remove(&current_key_str);
             }
-
-            let _ = self.file.read_exact(&mut current_value);
-            let _ = String::from_utf8(current_value).unwrap();
         }
         keys
     }
@@ -238,23 +240,23 @@ impl Engine for BinaryEngineV1 {
 * Uses a LSM-tree to store key-value pairs in a file.
 */
 struct LSMTreeEngine {
-    file: File,
+    _file: File,
 }
 
 impl LSMTreeEngine {
     pub fn new(file_path: &str) -> Self {
         let file = open_file(file_path);
 
-        LSMTreeEngine { file }
+        LSMTreeEngine { _file: file }
     }
 }
 
 impl Engine for LSMTreeEngine {
-    fn get(&mut self, key: &str) -> Option<String> {
+    fn get(&mut self, _key: &str) -> Option<String> {
         unimplemented!()
     }
 
-    fn set(&mut self, key: &str, value: &str) {
+    fn set(&mut self, _key: &str, _value: &str) {
         unimplemented!()
     }
 
@@ -262,7 +264,7 @@ impl Engine for LSMTreeEngine {
         unimplemented!()
     }
 
-    fn delete(&mut self, key: &str) {
+    fn delete(&mut self, _key: &str) {
         unimplemented!()
     }
 }
