@@ -134,10 +134,12 @@ impl Engine for BinaryEngineV1 {
             let mut tombstone = [0; 1];
             let _ = self.file.read_exact(&mut tombstone);
 
-            if tombstone[0] == 1 {
-                value = None
-            } else if current_key_str == key {
-                value = Some(value_str);
+            if current_key_str == key {
+                if tombstone[0] == 1 {
+                    value = None
+                } else {
+                    value = Some(value_str);
+                }
             }
         }
         value

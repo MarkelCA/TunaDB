@@ -1,4 +1,8 @@
+extern crate core;
+
 use clap::Parser;
+use core::config::{self, Config};
+use core::storage::{self, Engine};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -6,11 +10,6 @@ struct CliArgs {
     #[clap(subcommand)]
     command: Command,
 }
-
-extern crate core;
-
-use core::config;
-use core::storage;
 
 #[derive(Parser, Debug)]
 enum Command {
@@ -20,13 +19,13 @@ enum Command {
     Set { key: String, value: String },
     /// Deletes the specified key
     Del { key: String },
+    /// Lists all keys in the database
+    List,
     /// Manages the database configuration
     Config {
         #[clap(subcommand)]
         command: ConfigCommand,
     },
-    /// Lists all keys in the database
-    List,
 }
 
 #[derive(Parser, Debug)]
@@ -46,10 +45,13 @@ enum SetConfigCommand {
 fn main() {
     let args = CliArgs::parse();
     let config = config::parse();
-
     let mut engine = storage::new_engine(&config.file_path);
 
-    match args.command {
+    run_command(config, &mut engine, args.command)
+}
+
+fn run_command(config: Config, engine: &mut Box<dyn Engine>, command: Command) {
+    match command {
         Command::Get { key } => match engine.get(&key) {
             Some(value) => println!("{}", value),
             None => println!("(nil)"),
