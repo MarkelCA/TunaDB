@@ -50,7 +50,10 @@ fn main() -> ExitCode {
     let mut engine = storage::new_engine(&config.file_path).expect("Couldn't create engine");
 
     match run_command(config, &mut engine, args.command) {
-        Err(_) => ExitCode::from(1),
+        Err(err) => {
+            println!("Error: {}", err.to_string());
+            ExitCode::from(1)
+        }
         Ok(_) => ExitCode::from(0),
     }
 }
@@ -69,7 +72,7 @@ fn run_command(
             ConfigCommand::Get => println!("{:#?}", config),
             ConfigCommand::Set { command } => match command {
                 SetConfigCommand::FilePath { value } => {
-                    config::set_file_path(value);
+                    config::set_file_path(value)?;
                 }
             },
         },

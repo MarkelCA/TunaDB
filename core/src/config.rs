@@ -41,25 +41,43 @@ pub fn parse() -> Result<Config, anyhow::Error> {
         };
 
         let toml = toml::to_string(&default_config)?;
-        fs::write(config_file.to_str().unwrap(), toml)?;
+        fs::write(
+            config_file
+                .to_str()
+                .ok_or(anyhow!("config file couldn't be parsed as string"))?,
+            toml,
+        )?;
     }
 
     if !db_dir.exists() {
         let _ = fs::create_dir_all(&db_dir);
     }
 
-    let contents = fs::read_to_string(config_file.to_str().unwrap()).unwrap();
+    let contents = fs::read_to_string(
+        config_file
+            .to_str()
+            .ok_or(anyhow!("config file couldn't be parsed as string"))?,
+    )?;
 
     let config = toml::from_str(&contents)?;
     Ok(config)
 }
 
-pub fn set_file_path(file_path: String) {
-    let config_dir = home::home_dir().unwrap().join(".config").join("sallydb");
+pub fn set_file_path(file_path: String) -> anyhow::Result<()> {
+    let config_dir = home::home_dir()
+        .ok_or(anyhow!("home dir coundn't be found"))?
+        .join(".config")
+        .join("sallydb");
     let config_file = config_dir.join("config.toml");
 
     let config = Config { file_path };
 
-    let toml = toml::to_string(&config).unwrap();
-    fs::write(config_file.to_str().unwrap(), toml).unwrap();
+    let toml = toml::to_string(&config)?;
+    fs::write(
+        config_file
+            .to_str()
+            .ok_or(anyhow!("config file couldn't be parsed as string"))?,
+        toml,
+    )?;
+    Ok(())
 }

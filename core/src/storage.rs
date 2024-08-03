@@ -24,7 +24,7 @@ fn open_file(file_path: &str) -> Result<File, std::io::Error> {
         file_options = file_options.create(true)
     }
 
-    let mut file = file_options.open(file_path).expect("Couldn't open file");
+    let mut file = file_options.open(file_path)?;
 
     if !file_exists {
         file.write(&[ENCODING_VERSION])?;
@@ -77,13 +77,9 @@ pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
     let mut version = [0; 1];
 
     // We reset the file cursor to the start of the file
-    file.seek(std::io::SeekFrom::Start(0))
-        .with_context(|| format!("Seeking to start of file {}", file_path))
-        .expect("Couldn't seek to start");
+    file.seek(std::io::SeekFrom::Start(0))?;
 
-    file.read_exact(&mut version)
-        .with_context(|| format!("Reading encoding version from file {}", file_path))
-        .expect("Couldn't read version");
+    file.read_exact(&mut version)?;
 
     match version[0] {
         1 => Ok(Box::new(BinaryEngineV1::new(file_path)?)),
@@ -103,10 +99,7 @@ impl BinaryEngineV1 {
 impl Engine for BinaryEngineV1 {
     fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
         let mut value: Option<String> = None;
-        self.file
-            .seek(std::io::SeekFrom::Start(1))
-            .with_context(|| format!("Seeking to start of data in file"))
-            .expect("Couldn't seek to start");
+        self.file.seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
 
         let file_size = self.file.metadata()?.len();
 
@@ -175,8 +168,7 @@ impl Engine for BinaryEngineV1 {
 
         self.file
             .seek(std::io::SeekFrom::Start(1))
-            .with_context(|| format!("Seeking to start of data in file"))
-            .expect("Couldn't seek to start");
+            .with_context(|| format!("Seeking to start of data in file"))?;
 
         let file_size = self.file.metadata()?.len();
         while self.file.stream_position()? < file_size {
