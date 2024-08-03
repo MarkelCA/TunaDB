@@ -1,6 +1,5 @@
 extern crate core;
 
-use anyhow::Context;
 use clap::Parser;
 use core::config::{self, Config};
 use core::storage::{self, Engine};
