@@ -2,7 +2,7 @@ extern crate core;
 
 use clap::Parser;
 use core::config::{self, Config};
-use core::storage::{self, Engine};
+use core::storage::{self, Engine, EngineEnum};
 use std::process::ExitCode;
 
 #[derive(Parser, Debug)]
@@ -58,11 +58,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_command(
-    config: Config,
-    engine: &mut Box<dyn Engine>,
-    command: Command,
-) -> anyhow::Result<()> {
+fn run_command(config: Config, engine: &mut EngineEnum, command: Command) -> anyhow::Result<()> {
     match command {
         Command::Get { key } => match engine.get(&key)? {
             Some(value) => println!("{}", value),
