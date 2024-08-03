@@ -1,5 +1,6 @@
 extern crate core;
 
+use anyhow::Context;
 use clap::Parser;
 use core::config::{self, Config};
 use core::storage::{self, Engine};
@@ -44,8 +45,8 @@ enum SetConfigCommand {
 
 fn main() {
     let args = CliArgs::parse();
-    let config = config::parse();
-    let mut engine = storage::new_engine(&config.file_path);
+    let config = config::parse().expect("config couldn't be found");
+    let mut engine = storage::new_engine(&config.file_path).expect("Couldn't create engine");
 
     run_command(config, &mut engine, args.command)
 }

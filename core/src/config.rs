@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
@@ -6,13 +7,20 @@ pub struct Config {
     pub file_path: String,
 }
 
-pub fn parse() -> Config {
-    let config_dir = home::home_dir().unwrap().join(".config").join("sallydb");
-    let db_dir = home::home_dir()
-        .unwrap()
-        .join(".local")
-        .join("state")
-        .join("sallydb");
+#[derive(Debug)]
+struct Thing;
+
+pub fn parse() -> Result<Config, anyhow::Error> {
+    let home_dir = home::home_dir();
+    let config_dir;
+    let db_dir;
+
+    if let Some(result) = home_dir {
+        config_dir = result.join(".config").join("sallydb");
+        db_dir = result.join(".local").join("state").join("sallydb");
+    } else {
+        return Err(anyhow!("Home dir couldn't be found"));
+    }
 
     let db_file = db_dir.join("sally.db");
 
@@ -26,11 +34,14 @@ pub fn parse() -> Config {
 
     if !config_file.exists() {
         let default_config = Config {
-            file_path: db_file.to_str().unwrap().to_string(),
+            file_path: db_file
+                .to_str()
+                .ok_or(anyhow!("db file path coulnd't be stringifyed"))?
+                .to_string(),
         };
 
-        let toml = toml::to_string(&default_config).unwrap();
-        fs::write(config_file.to_str().unwrap(), toml).unwrap();
+        let toml = toml::to_string(&default_config)?;
+        fs::write(config_file.to_str().unwrap(), toml)?;
     }
 
     if !db_dir.exists() {
@@ -38,7 +49,8 @@ pub fn parse() -> Config {
     }
 
     let contents = fs::read_to_string(config_file.to_str().unwrap()).unwrap();
-    toml::from_str(&contents).unwrap()
+
+    toml::from_str(&contents).map_err(|err| anyhow!(err.to_string()))
 }
 
 pub fn set_file_path(file_path: String) {

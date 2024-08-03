@@ -15,7 +15,7 @@ pub trait Engine {
     fn list(&mut self) -> HashSet<String>;
 }
 
-fn open_file(file_path: &str) -> File {
+fn open_file(file_path: &str) -> Result<File, std::io::Error> {
     let file_exists = Path::new(file_path).exists();
     let mut open_options = OpenOptions::new();
     let mut file_options = open_options.append(true).write(true).read(true);
@@ -27,12 +27,13 @@ fn open_file(file_path: &str) -> File {
     let mut file = file_options.open(file_path).expect("Couldn't open file");
 
     if !file_exists {
-        if let Err(e) = file.write(&[ENCODING_VERSION]) {
-            panic!("Couldn't write to file: {}", e);
-        }
+        file.write(&[ENCODING_VERSION])?;
+        // if let Err(e) = file.write(&[ENCODING_VERSION]) {
+        //     panic!("Couldn't write to file: {}", e);
+        // }
     }
 
-    file
+    Ok(file)
 }
 
 /**
@@ -71,8 +72,8 @@ pub struct BinaryEngineV1 {
 * the encoding version from the file (first byte) and
 * returns the appropriate Engine implementation.
 */
-pub fn new_engine(file_path: &str) -> Box<dyn Engine> {
-    let mut file = open_file(file_path);
+pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
+    let mut file = open_file(file_path)?;
     let mut version = [0; 1];
 
     // We reset the file cursor to the start of the file
@@ -85,17 +86,17 @@ pub fn new_engine(file_path: &str) -> Box<dyn Engine> {
         .expect("Couldn't read version");
 
     match version[0] {
-        1 => Box::new(BinaryEngineV1::new(file_path)),
-        2 => Box::new(LSMTreeEngine::new(file_path)),
+        1 => Ok(Box::new(BinaryEngineV1::new(file_path)?)),
+        2 => Ok(Box::new(LSMTreeEngine::new(file_path)?)),
         _ => panic!("Unsupported encoding version ({})", version[0]),
     }
 }
 
 impl BinaryEngineV1 {
-    pub fn new(file_path: &str) -> Self {
-        let file = open_file(file_path);
+    pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
+        let file = open_file(file_path)?;
 
-        BinaryEngineV1 { file }
+        Ok(BinaryEngineV1 { file })
     }
 }
 
@@ -246,10 +247,10 @@ struct LSMTreeEngine {
 }
 
 impl LSMTreeEngine {
-    pub fn new(file_path: &str) -> Self {
-        let file = open_file(file_path);
+    pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
+        let file = open_file(file_path)?;
 
-        LSMTreeEngine { _file: file }
+        Ok(LSMTreeEngine { _file: file })
     }
 }
 
