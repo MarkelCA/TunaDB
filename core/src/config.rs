@@ -10,6 +10,11 @@ pub struct Config {
 #[derive(Debug)]
 struct Thing;
 
+/// Opens the config file and returns the Config struct
+/// If the file doesn't exist, it creates it with the default values
+/// If the config directory doesn't exist, it creates it
+/// If the db directory doesn't exist, it creates it
+/// If the db file doesn't exist, it creates it
 pub fn parse() -> Result<Config, anyhow::Error> {
     let home_dir = home::home_dir();
     let config_dir;
