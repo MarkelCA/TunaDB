@@ -44,7 +44,7 @@ enum SetConfigCommand {
 
 fn main() {
     let args = CliArgs::parse();
-    let config = config::parse();
+    let config = config::parse().expect("config couldn't be found");
     let mut engine = storage::new_engine(&config.file_path);
 
     run_command(config, &mut engine, args.command)
