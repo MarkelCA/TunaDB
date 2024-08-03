@@ -6,13 +6,13 @@ use std::collections::HashSet;
 use std::io::{Read, Seek};
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
-use anyhow::Context;
+use anyhow::{Context, Error};
 
 pub trait Engine {
-    fn set(&mut self, key: &str, value: &str);
-    fn delete(&mut self, key: &str);
-    fn get(&mut self, key: &str) -> Option<String>;
-    fn list(&mut self) -> HashSet<String>;
+    fn set(&mut self, key: &str, value: &str) -> std::io::Result<()>;
+    fn delete(&mut self, key: &str) -> std::io::Result<()>;
+    fn get(&mut self, key: &str) -> Result<Option<String>, Error>;
+    fn list(&mut self) -> anyhow::Result<HashSet<String>>;
 }
 
 fn open_file(file_path: &str) -> Result<File, std::io::Error> {
@@ -101,16 +101,16 @@ impl BinaryEngineV1 {
 }
 
 impl Engine for BinaryEngineV1 {
-    fn get(&mut self, key: &str) -> Option<String> {
+    fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
         let mut value: Option<String> = None;
         self.file
             .seek(std::io::SeekFrom::Start(1))
             .with_context(|| format!("Seeking to start of data in file"))
             .expect("Couldn't seek to start");
 
-        let file_size = self.file.metadata().unwrap().len();
+        let file_size = self.file.metadata()?.len();
 
-        while self.file.stream_position().unwrap() < file_size {
+        while self.file.stream_position()? < file_size {
             let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut key_length_buffer);
             let key_length = key_length_buffer[0] as usize;
@@ -120,7 +120,7 @@ impl Engine for BinaryEngineV1 {
 
             let _ = self.file.read_exact(&mut current_key);
 
-            let current_key_str = String::from_utf8(current_key).unwrap();
+            let current_key_str = String::from_utf8(current_key)?;
 
             let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut value_length_buffer);
@@ -130,7 +130,7 @@ impl Engine for BinaryEngineV1 {
             current_value.resize(value_length as usize, 0);
 
             let _ = self.file.read_exact(&mut current_value);
-            let value_str = String::from_utf8(current_value).unwrap();
+            let value_str = String::from_utf8(current_value)?;
 
             let mut tombstone = [0; 1];
             let _ = self.file.read_exact(&mut tombstone);
@@ -143,10 +143,10 @@ impl Engine for BinaryEngineV1 {
                 }
             }
         }
-        value
+        Ok(value)
     }
 
-    fn set(&mut self, key: &str, value: &str) {
+    fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
         let mut bytes =
             Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
 
@@ -166,12 +166,11 @@ impl Engine for BinaryEngineV1 {
         // We add the tombstone byte (not deleted by default)
         bytes.push(0);
 
-        if let Err(e) = self.file.write_all(&bytes) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
+        self.file.write_all(&bytes)?;
+        Ok(())
     }
 
-    fn list(&mut self) -> HashSet<String> {
+    fn list(&mut self) -> anyhow::Result<HashSet<String>> {
         let mut keys: HashSet<String> = HashSet::new();
 
         self.file
@@ -179,8 +178,8 @@ impl Engine for BinaryEngineV1 {
             .with_context(|| format!("Seeking to start of data in file"))
             .expect("Couldn't seek to start");
 
-        let file_size = self.file.metadata().unwrap().len();
-        while self.file.stream_position().unwrap() < file_size {
+        let file_size = self.file.metadata()?.len();
+        while self.file.stream_position()? < file_size {
             let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut key_length_buffer);
             let key_length = key_length_buffer[0] as usize;
@@ -190,7 +189,7 @@ impl Engine for BinaryEngineV1 {
 
             let _ = self.file.read_exact(&mut current_key);
 
-            let current_key_str = String::from_utf8(current_key).unwrap();
+            let current_key_str = String::from_utf8(current_key)?;
 
             let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
             let _ = self.file.read_exact(&mut value_length_buffer);
@@ -200,7 +199,7 @@ impl Engine for BinaryEngineV1 {
             current_value.resize(value_length as usize, 0);
 
             let _ = self.file.read_exact(&mut current_value);
-            let _ = String::from_utf8(current_value).unwrap();
+            let _ = String::from_utf8(current_value)?;
 
             let mut tombstone = [0; 1];
             let _ = self.file.read_exact(&mut tombstone);
@@ -211,10 +210,10 @@ impl Engine for BinaryEngineV1 {
                 keys.remove(&current_key_str);
             }
         }
-        keys
+        Ok(keys)
     }
 
-    fn delete(&mut self, key: &str) {
+    fn delete(&mut self, key: &str) -> std::io::Result<()> {
         let mut bytes = Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + 1);
 
         // Add the length of the key (1 byte)
@@ -233,9 +232,8 @@ impl Engine for BinaryEngineV1 {
         // We add the tombstone byte (deleted)
         bytes.push(1);
 
-        if let Err(e) = self.file.write_all(&bytes) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
+        self.file.write_all(&bytes)?;
+        Ok(())
     }
 }
 
@@ -255,19 +253,19 @@ impl LSMTreeEngine {
 }
 
 impl Engine for LSMTreeEngine {
-    fn get(&mut self, _key: &str) -> Option<String> {
+    fn get(&mut self, _key: &str) -> Result<Option<String>, Error> {
         unimplemented!()
     }
 
-    fn set(&mut self, _key: &str, _value: &str) {
+    fn set(&mut self, _key: &str, _value: &str) -> std::io::Result<()> {
         unimplemented!()
     }
 
-    fn list(&mut self) -> HashSet<String> {
+    fn list(&mut self) -> anyhow::Result<HashSet<String>> {
         unimplemented!()
     }
 
-    fn delete(&mut self, _key: &str) {
+    fn delete(&mut self, _key: &str) -> std::io::Result<()> {
         unimplemented!()
     }
 }

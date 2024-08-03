@@ -44,20 +44,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn run_command(mut engine: Box<dyn SendableEngine>, command: &str) -> String {
-    match command {
-        "get" => engine.get("key").unwrap_or("(nil)".to_string()),
-        "set" => {
-            engine.set("key", "value");
-            "ok".to_string()
-        }
-        "list" => {
-            let mut result = String::new();
-            for key in engine.list() {
-                result.push_str(&format!("{}\n", key));
-            }
-            result
-        }
-        _ => "unknown command".to_string(),
-    }
-}
+// fn run_command(mut engine: Box<dyn SendableEngine>, command: &str) -> String {
+//     match command {
+//         "get" => engine.get("key")?,
+//         "set" => {
+//             engine.set("key", "value");
+//             "ok".to_string()
+//         }
+//         "list" => {
+//             let mut result = String::new();
+//             for key in engine.list() {
+//                 result.push_str(&format!("{}\n", key));
+//             }
+//             result
+//         }
+//         _ => "unknown command".to_string(),
+//     }
+// }

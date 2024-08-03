@@ -50,7 +50,8 @@ pub fn parse() -> Result<Config, anyhow::Error> {
 
     let contents = fs::read_to_string(config_file.to_str().unwrap()).unwrap();
 
-    toml::from_str(&contents).map_err(|err| anyhow!(err.to_string()))
+    let config = toml::from_str(&contents)?;
+    Ok(config)
 }
 
 pub fn set_file_path(file_path: String) {

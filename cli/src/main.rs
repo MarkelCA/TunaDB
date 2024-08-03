@@ -3,6 +3,7 @@ extern crate core;
 use clap::Parser;
 use core::config::{self, Config};
 use core::storage::{self, Engine};
+use std::process::ExitCode;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -42,17 +43,25 @@ enum SetConfigCommand {
     FilePath { value: String },
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = CliArgs::parse();
+
     let config = config::parse().expect("config couldn't be found");
     let mut engine = storage::new_engine(&config.file_path).expect("Couldn't create engine");
 
-    run_command(config, &mut engine, args.command)
+    match run_command(config, &mut engine, args.command) {
+        Err(_) => ExitCode::from(1),
+        Ok(_) => ExitCode::from(0),
+    }
 }
 
-fn run_command(config: Config, engine: &mut Box<dyn Engine>, command: Command) {
+fn run_command(
+    config: Config,
+    engine: &mut Box<dyn Engine>,
+    command: Command,
+) -> anyhow::Result<()> {
     match command {
-        Command::Get { key } => match engine.get(&key) {
+        Command::Get { key } => match engine.get(&key)? {
             Some(value) => println!("{}", value),
             None => println!("(nil)"),
         },
@@ -65,15 +74,16 @@ fn run_command(config: Config, engine: &mut Box<dyn Engine>, command: Command) {
             },
         },
         Command::Set { key, value } => {
-            engine.set(&key, &value);
+            engine.set(&key, &value)?;
         }
         Command::Del { key } => {
-            engine.delete(&key);
+            engine.delete(&key)?;
         }
         Command::List => {
-            for key in engine.list() {
+            for key in engine.list()? {
                 println!("{}", key);
             }
         }
-    }
+    };
+    Ok(())
 }
