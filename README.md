@@ -21,7 +21,7 @@ cargo install --path ./tcp
 ## Usage
 ### cli
 ```
-$ tunadb
+$ tuna
 TunaDB. A simple key-value storage
 
 Usage: tunadb <COMMAND>
