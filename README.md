@@ -1,4 +1,4 @@
-# tunadb
+# TunaDB 🐟
 
 Key-value storage written in rust for learning purposes. Working on cli and tcp-server implementations. Right now uses a simple length-prefixed binary encoding format for the storage files, but there's plans to use other strategies such as LSM trees in the future.
 
