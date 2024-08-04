@@ -1,4 +1,4 @@
-# sallydb
+# tunadb
 
 Key-value storage written in rust for learning purposes. Working on cli and tcp-server implementations. Right now uses a simple length-prefixed binary encoding format for the storage files, but there's plans to use other strategies such as LSM trees in the future.
 
@@ -9,8 +9,8 @@ Key-value storage written in rust for learning purposes. Working on cli and tcp-
 - [Cargo](https://github.com/rust-lang/cargo)
 
 ```bash
-git clone https://github.com/MarkelCA/sallydb.git
-cd sallydb
+git clone https://github.com/MarkelCA/tunadb.git
+cd tunadb
 # For cli
 cargo install --path ./cli
 # For tcp server
@@ -21,10 +21,10 @@ cargo install --path ./tcp
 ## Usage
 ### cli
 ```
-$ sallydb
-SallyDB. A simple key-value storage
+$ tunadb
+TunaDB. A simple key-value storage
 
-Usage: sallydb <COMMAND>
+Usage: tunadb <COMMAND>
 
 Commands:
   get     Get the value for the specified key
