@@ -22,9 +22,9 @@ cargo install --path ./tcp
 ### cli
 ```
 $ tuna
-TunaDB. A simple key-value storage
+TunaDB. A simple key-value storage written in Rust
 
-Usage: tunadb <COMMAND>
+Usage: tuna <COMMAND>
 
 Commands:
   get     Get the value for the specified key
