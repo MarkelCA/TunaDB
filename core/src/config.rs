@@ -21,13 +21,13 @@ pub fn parse() -> Result<Config, anyhow::Error> {
     let db_dir;
 
     if let Some(result) = home_dir {
-        config_dir = result.join(".config").join("sallydb");
-        db_dir = result.join(".local").join("state").join("sallydb");
+        config_dir = result.join(".config").join("tunadb");
+        db_dir = result.join(".local").join("state").join("tunadb");
     } else {
         return Err(anyhow!("Home dir couldn't be found"));
     }
 
-    let db_file = db_dir.join("sally.db");
+    let db_file = db_dir.join("tuna.db");
 
     let config_file: PathBuf;
 
@@ -72,7 +72,7 @@ pub fn set_file_path(file_path: String) -> anyhow::Result<()> {
     let config_dir = home::home_dir()
         .ok_or(anyhow!("home dir coundn't be found"))?
         .join(".config")
-        .join("sallydb");
+        .join("tunadb");
     let config_file = config_dir.join("config.toml");
 
     let config = Config { file_path };

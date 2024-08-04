@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-description = "SallyDB. A simple key-value storage"
+description = "TunaDB. A simple key-value storage written in Rust"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,5 +12,5 @@ clap = { version = "4.5.10", features = ["derive"] }
 core = {path = "../core"}
 
 [[bin]]
-name = "sally"
+name = "tuna"
 path = "src/main.rs"
