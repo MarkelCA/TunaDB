@@ -432,6 +432,7 @@ dependencies = [
 name = "tcp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "core",
  "tokio",
 ]
