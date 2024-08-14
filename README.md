@@ -38,3 +38,19 @@ Options:
   -h, --help     Print help
   -V, --version  Print version
 ```
+### tcp
+Start the server:
+```
+tuna-server --log-level info
+```
+Connect to the server (in another terminal):
+```
+$ nc localhost 8080
+help
+Commands:
+get <key> - Get the value for the specified key
+set <key> <value> - Sets the value for the specified key
+del <key> - Deletes the specified key
+list - Lists all keys in the database
+help - Prints the help message
+```

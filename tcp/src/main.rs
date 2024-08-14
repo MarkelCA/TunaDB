@@ -1,6 +1,7 @@
-mod command;
-
+use args::Args;
+use clap::Parser;
 use command::Command;
+use env_logger::Env;
 use std::str::FromStr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -9,12 +10,16 @@ use core::config;
 use core::storage::{self, Engine, EngineEnum};
 use log;
 
+mod args;
+mod command;
 #[path = "./storage.rs"]
 mod tcp_storage;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    let args = Args::parse();
+    env_logger::init_from_env(Env::default().default_filter_or(args.log_level.to_string()));
+
     log::info!("Starting server");
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
     let config = config::parse()?;
