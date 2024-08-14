@@ -51,27 +51,27 @@ impl FromStr for Command {
     }
 }
 
-pub fn run(engine: &mut EngineEnum, command: &str) -> anyhow::Result<String> {
+pub async fn run(engine: &mut EngineEnum, command: &str) -> anyhow::Result<String> {
     let command = Command::from_str(command)?;
     match command {
-        Command::Get { key } => match engine.get(&key) {
+        Command::Get { key } => match engine.get(&key).await {
             Ok(value) => match value {
                 Some(v) => Ok(format!("{}\n", v)),
                 None => Ok("(nil)\n".to_string()),
             },
             Err(e) => Ok(format!("error: {}\n", e)),
         },
-        Command::Set { key, value } => match engine.set(&key, &value) {
+        Command::Set { key, value } => match engine.set(&key, &value).await {
             Ok(_) => Ok("ok\n".to_string()),
             Err(e) => Ok(format!("error: {}", e)),
         },
-        Command::Del { key } => match engine.delete(&key) {
+        Command::Del { key } => match engine.delete(&key).await {
             Ok(_) => Ok("ok\n".to_string()),
             Err(e) => Ok(format!("error: {}", e)),
         },
         Command::List => {
             let mut result = String::new();
-            match engine.list() {
+            match engine.list().await {
                 Ok(keys) => {
                     for key in keys {
                         result.push_str(&format!("- {}\n", key));

@@ -4,16 +4,17 @@ const VALUE_LENGTH_SIZE: usize = 2;
 
 use std::collections::HashSet;
 use std::io::{Read, Seek};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
-use anyhow::{Context, Error};
+use anyhow::Error;
+use tokio::sync::Mutex;
 
 pub trait Engine: Send + Clone {
-    fn set(&mut self, key: &str, value: &str) -> std::io::Result<()>;
-    fn delete(&mut self, key: &str) -> std::io::Result<()>;
-    fn get(&mut self, key: &str) -> Result<Option<String>, Error>;
-    fn list(&mut self) -> anyhow::Result<HashSet<String>>;
+    async fn set(&mut self, key: &str, value: &str) -> std::io::Result<()>;
+    async fn delete(&mut self, key: &str) -> std::io::Result<()>;
+    async fn get(&mut self, key: &str) -> Result<Option<String>, Error>;
+    async fn list(&mut self) -> anyhow::Result<HashSet<String>>;
 }
 
 fn open_file(file_path: &str) -> Result<File, std::io::Error> {
@@ -99,43 +100,36 @@ impl BinaryEngineV1 {
 }
 
 impl Engine for BinaryEngineV1 {
-    fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
+    async fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
         let mut value: Option<String> = None;
-        self.file
-            .lock()
-            .unwrap()
-            .seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
+        self.file.lock().await.seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
 
-        let file_size = self.file.lock().unwrap().metadata()?.len();
+        let file_size = self.file.lock().await.metadata()?.len();
 
-        while self.file.lock().unwrap().stream_position()? < file_size {
+        while self.file.lock().await.stream_position()? < file_size {
             let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
-            let _ = self.file.lock().unwrap().read_exact(&mut key_length_buffer);
+            let _ = self.file.lock().await.read_exact(&mut key_length_buffer);
             let key_length = key_length_buffer[0] as usize;
 
             let mut current_key: Vec<u8> = Vec::with_capacity(key_length as usize);
             current_key.resize(key_length as usize, 0);
 
-            let _ = self.file.lock().unwrap().read_exact(&mut current_key);
+            let _ = self.file.lock().await.read_exact(&mut current_key);
 
             let current_key_str = String::from_utf8(current_key)?;
 
             let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
-            let _ = self
-                .file
-                .lock()
-                .unwrap()
-                .read_exact(&mut value_length_buffer);
+            let _ = self.file.lock().await.read_exact(&mut value_length_buffer);
             let value_length = u16::from_be_bytes(value_length_buffer);
 
             let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
             current_value.resize(value_length as usize, 0);
 
-            let _ = self.file.lock().unwrap().read_exact(&mut current_value);
+            let _ = self.file.lock().await.read_exact(&mut current_value);
             let value_str = String::from_utf8(current_value)?;
 
             let mut tombstone = [0; 1];
-            let _ = self.file.lock().unwrap().read_exact(&mut tombstone);
+            let _ = self.file.lock().await.read_exact(&mut tombstone);
 
             if current_key_str == key {
                 if tombstone[0] == 1 {
@@ -148,7 +142,7 @@ impl Engine for BinaryEngineV1 {
         Ok(value)
     }
 
-    fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
+    async fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
         let mut bytes =
             Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
 
@@ -168,48 +162,40 @@ impl Engine for BinaryEngineV1 {
         // We add the tombstone byte (not deleted by default)
         bytes.push(0);
 
-        self.file.lock().unwrap().write_all(&bytes)?;
+        self.file.lock().await.write_all(&bytes)?;
         Ok(())
     }
 
-    fn list(&mut self) -> anyhow::Result<HashSet<String>> {
+    async fn list(&mut self) -> anyhow::Result<HashSet<String>> {
         let mut keys: HashSet<String> = HashSet::new();
 
-        self.file
-            .lock()
-            .unwrap()
-            .seek(std::io::SeekFrom::Start(1))
-            .with_context(|| format!("Seeking to start of data in file"))?;
+        self.file.lock().await.seek(std::io::SeekFrom::Start(1));
 
-        let file_size = self.file.lock().unwrap().metadata()?.len();
-        while self.file.lock().unwrap().stream_position()? < file_size {
+        let file_size = self.file.lock().await.metadata()?.len();
+        while self.file.lock().await.stream_position()? < file_size {
             let mut key_length_buffer = [0; KEY_LENGTH_SIZE];
-            let _ = self.file.lock().unwrap().read_exact(&mut key_length_buffer);
+            let _ = self.file.lock().await.read_exact(&mut key_length_buffer);
             let key_length = key_length_buffer[0] as usize;
 
             let mut current_key: Vec<u8> = Vec::with_capacity(key_length as usize);
             current_key.resize(key_length as usize, 0);
 
-            let _ = self.file.lock().unwrap().read_exact(&mut current_key);
+            let _ = self.file.lock().await.read_exact(&mut current_key);
 
             let current_key_str = String::from_utf8(current_key)?;
 
             let mut value_length_buffer = [0; VALUE_LENGTH_SIZE];
-            let _ = self
-                .file
-                .lock()
-                .unwrap()
-                .read_exact(&mut value_length_buffer);
+            let _ = self.file.lock().await.read_exact(&mut value_length_buffer);
             let value_length = u16::from_be_bytes(value_length_buffer);
 
             let mut current_value: Vec<u8> = Vec::with_capacity(value_length as usize);
             current_value.resize(value_length as usize, 0);
 
-            let _ = self.file.lock().unwrap().read_exact(&mut current_value);
+            let _ = self.file.lock().await.read_exact(&mut current_value);
             let _ = String::from_utf8(current_value)?;
 
             let mut tombstone = [0; 1];
-            let _ = self.file.lock().unwrap().read_exact(&mut tombstone);
+            let _ = self.file.lock().await.read_exact(&mut tombstone);
 
             if tombstone[0] == 0 {
                 keys.insert(current_key_str);
@@ -220,7 +206,7 @@ impl Engine for BinaryEngineV1 {
         Ok(keys)
     }
 
-    fn delete(&mut self, key: &str) -> std::io::Result<()> {
+    async fn delete(&mut self, key: &str) -> std::io::Result<()> {
         let mut bytes = Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + 1);
 
         // Add the length of the key (1 byte)
@@ -239,7 +225,7 @@ impl Engine for BinaryEngineV1 {
         // We add the tombstone byte (deleted)
         bytes.push(1);
 
-        self.file.lock().unwrap().write_all(&bytes)?;
+        self.file.lock().await.write_all(&bytes)?;
         Ok(())
     }
 }
@@ -248,7 +234,7 @@ impl Engine for BinaryEngineV1 {
 * Uses a LSM-tree to store key-value pairs in a file.
 */
 #[derive(Clone)]
-struct LSMTreeEngine {
+pub struct LSMTreeEngine {
     _file: Arc<Mutex<File>>,
 }
 
@@ -261,19 +247,19 @@ impl LSMTreeEngine {
 }
 
 impl Engine for LSMTreeEngine {
-    fn get(&mut self, _key: &str) -> Result<Option<String>, Error> {
+    async fn get(&mut self, _key: &str) -> Result<Option<String>, Error> {
         unimplemented!()
     }
 
-    fn set(&mut self, _key: &str, _value: &str) -> std::io::Result<()> {
+    async fn set(&mut self, _key: &str, _value: &str) -> std::io::Result<()> {
         unimplemented!()
     }
 
-    fn list(&mut self) -> anyhow::Result<HashSet<String>> {
+    async fn list(&mut self) -> anyhow::Result<HashSet<String>> {
         unimplemented!()
     }
 
-    fn delete(&mut self, _key: &str) -> std::io::Result<()> {
+    async fn delete(&mut self, _key: &str) -> std::io::Result<()> {
         unimplemented!()
     }
 }
@@ -286,31 +272,31 @@ pub enum EngineEnum {
 }
 
 impl Engine for EngineEnum {
-    fn delete(&mut self, key: &str) -> std::io::Result<()> {
+    async fn delete(&mut self, key: &str) -> std::io::Result<()> {
         match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.delete(key),
-            EngineEnum::LSMTreeEngine(engine) => engine.delete(key),
+            EngineEnum::BinaryEngineV1(engine) => engine.delete(key).await,
+            EngineEnum::LSMTreeEngine(engine) => engine.delete(key).await,
         }
     }
 
-    fn get(&mut self, key: &str) -> Result<Option<String>, anyhow::Error> {
+    async fn get(&mut self, key: &str) -> Result<Option<String>, anyhow::Error> {
         match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.get(key),
-            EngineEnum::LSMTreeEngine(engine) => engine.get(key),
+            EngineEnum::BinaryEngineV1(engine) => engine.get(key).await,
+            EngineEnum::LSMTreeEngine(engine) => engine.get(key).await,
         }
     }
 
-    fn set(&mut self, key: &str, value: &str) -> Result<(), std::io::Error> {
+    async fn set(&mut self, key: &str, value: &str) -> Result<(), std::io::Error> {
         match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.set(key, value),
-            EngineEnum::LSMTreeEngine(engine) => engine.set(key, value),
+            EngineEnum::BinaryEngineV1(engine) => engine.set(key, value).await,
+            EngineEnum::LSMTreeEngine(engine) => engine.set(key, value).await,
         }
     }
 
-    fn list(&mut self) -> Result<HashSet<std::string::String>, anyhow::Error> {
+    async fn list(&mut self) -> Result<HashSet<std::string::String>, anyhow::Error> {
         match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.list(),
-            EngineEnum::LSMTreeEngine(engine) => engine.list(),
+            EngineEnum::BinaryEngineV1(engine) => engine.list().await,
+            EngineEnum::LSMTreeEngine(engine) => engine.list().await,
         }
     }
 }

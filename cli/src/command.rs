@@ -32,9 +32,10 @@ pub enum ConfigCommand {
 pub enum SetConfigCommand {
     FilePath { value: String },
 }
-pub fn run(config: Config, engine: &mut EngineEnum, command: Command) -> anyhow::Result<()> {
+
+pub async fn run(config: Config, engine: &mut EngineEnum, command: Command) -> anyhow::Result<()> {
     match command {
-        Command::Get { key } => match engine.get(&key)? {
+        Command::Get { key } => match engine.get(&key).await? {
             Some(value) => println!("{}", value),
             None => println!("(nil)"),
         },
@@ -47,13 +48,13 @@ pub fn run(config: Config, engine: &mut EngineEnum, command: Command) -> anyhow:
             },
         },
         Command::Set { key, value } => {
-            engine.set(&key, &value)?;
+            engine.set(&key, &value).await?;
         }
         Command::Del { key } => {
-            engine.delete(&key)?;
+            engine.delete(&key).await?;
         }
         Command::List => {
-            for key in engine.list()? {
+            for key in engine.list().await? {
                 println!("{}", key);
             }
         }

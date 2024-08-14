@@ -71,7 +71,7 @@ async fn init() -> anyhow::Result<()> {
                 }
                 log::info!("Received command: \"{}\"", command.unwrap().trim());
                 // We can use unwrap here because the error is handled above
-                let response = command::run(&mut engine, command.unwrap()); // Pass a reference to the engine
+                let response = command::run(&mut engine, command.unwrap()).await; // Pass a reference to the engine
 
                 match response {
                     Ok(response) => {

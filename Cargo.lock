@@ -173,6 +173,7 @@ dependencies = [
  "anyhow",
  "clap",
  "core",
+ "tokio",
 ]
 
 [[package]]
@@ -188,6 +189,7 @@ dependencies = [
  "anyhow",
  "home",
  "serde",
+ "tokio",
  "toml",
 ]
 

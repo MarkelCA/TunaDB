@@ -15,13 +15,14 @@ struct CliArgs {
     command: Command,
 }
 
-fn main() -> ExitCode {
+#[tokio::main]
+async fn main() -> ExitCode {
     let args = CliArgs::parse();
 
     let config = config::parse().expect("config couldn't be found");
     let mut engine = storage::new_engine(&config.file_path).expect("Couldn't create engine");
 
-    match command::run(config, &mut engine, args.command) {
+    match command::run(config, &mut engine, args.command).await {
         Err(err) => {
             println!("Error: {}", err.to_string());
             ExitCode::from(1)
