@@ -41,7 +41,7 @@ Options:
 ### tcp
 Start the server:
 ```
-tuna-server --log-level info
+tuna-server --log-level info --port 8080
 ```
 Connect to the server (in another terminal):
 ```

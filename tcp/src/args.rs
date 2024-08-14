@@ -14,6 +14,8 @@ pub enum LogLevel {
 pub struct Args {
     #[arg(short, long, default_value_t = LogLevel::Info)]
     pub log_level: LogLevel,
+    #[arg(short, long, default_value_t = 8080)]
+    pub port: u16,
 }
 
 impl std::fmt::Display for LogLevel {
