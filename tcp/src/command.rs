@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use core::storage::{self, Engine, EngineEnum};
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -47,5 +48,48 @@ impl FromStr for Command {
             "help" => Ok(Command::Help),
             _ => Err(anyhow!("Unknown command")),
         }
+    }
+}
+
+pub fn run(engine: &mut EngineEnum, command: &str) -> anyhow::Result<String> {
+    let command = Command::from_str(command)?;
+    match command {
+        Command::Get { key } => match engine.get(&key) {
+            Ok(value) => match value {
+                Some(v) => Ok(format!("{}\n", v)),
+                None => Ok("(nil)\n".to_string()),
+            },
+            Err(e) => Ok(format!("error: {}\n", e)),
+        },
+        Command::Set { key, value } => match engine.set(&key, &value) {
+            Ok(_) => Ok("ok\n".to_string()),
+            Err(e) => Ok(format!("error: {}", e)),
+        },
+        Command::Del { key } => match engine.delete(&key) {
+            Ok(_) => Ok("ok\n".to_string()),
+            Err(e) => Ok(format!("error: {}", e)),
+        },
+        Command::List => {
+            let mut result = String::new();
+            match engine.list() {
+                Ok(keys) => {
+                    for key in keys {
+                        result.push_str(&format!("- {}\n", key));
+                    }
+                    result.push_str("\n");
+                }
+                Err(e) => {
+                    result.push_str(&format!("error: {}\n", e));
+                }
+            }
+            Ok(result)
+        }
+        Command::Help => Ok("Commands:\n\
+            get <key> - Get the value for the specified key\n\
+            set <key> <value> - Sets the value for the specified key\n\
+            del <key> - Deletes the specified key\n\
+            list - Lists all keys in the database\n\
+            help - Prints the help message\n"
+            .to_string()),
     }
 }
