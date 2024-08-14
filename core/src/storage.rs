@@ -8,6 +8,8 @@ use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::{Context, Error};
 
+use crate::index::{BinaryOffsetIndexer, OffsetIndexer};
+
 pub trait Engine {
     fn set(&mut self, key: &str, value: &str) -> std::io::Result<()>;
     fn delete(&mut self, key: &str) -> std::io::Result<()>;
@@ -65,6 +67,7 @@ fn open_file(file_path: &str) -> Result<File, std::io::Error> {
 */
 pub struct BinaryEngineV1 {
     file: File,
+    indexer: Box<dyn OffsetIndexer>,
 }
 
 /**
@@ -91,13 +94,16 @@ pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
 impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
         let file = open_file(file_path)?;
+        let indexer = Box::new(BinaryOffsetIndexer::new());
 
-        Ok(BinaryEngineV1 { file })
+        Ok(BinaryEngineV1 { file, indexer })
     }
 }
 
 impl Engine for BinaryEngineV1 {
     fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
+        self.indexer.get(key);
+
         let mut value: Option<String> = None;
         self.file.seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
 
@@ -140,6 +146,8 @@ impl Engine for BinaryEngineV1 {
     }
 
     fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
+        self.indexer.set(key, 200);
+
         let mut bytes =
             Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
 
