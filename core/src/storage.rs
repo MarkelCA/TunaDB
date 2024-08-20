@@ -7,6 +7,7 @@ use std::io::{Read, Seek};
 use std::sync::Arc;
 use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
+use crate::index::{BinaryOffsetIndexer, OffsetIndexer};
 use anyhow::Error;
 use tokio::sync::Mutex;
 
@@ -68,6 +69,7 @@ fn open_file(file_path: &str) -> Result<File, std::io::Error> {
 #[derive(Clone)]
 pub struct BinaryEngineV1 {
     file: Arc<Mutex<File>>,
+    indexer: Box<dyn OffsetIndexer>,
 }
 
 /**
@@ -94,13 +96,15 @@ pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
 impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
         let file = Arc::new(Mutex::new(open_file(file_path)?));
+        let indexer = Box::new(BinaryOffsetIndexer::new());
 
-        Ok(BinaryEngineV1 { file })
+        Ok(BinaryEngineV1 { file, indexer })
     }
 }
 
 impl Engine for BinaryEngineV1 {
     async fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
+        self.indexer.get(key);
         let mut value: Option<String> = None;
         self.file.lock().await.seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
 
@@ -143,6 +147,7 @@ impl Engine for BinaryEngineV1 {
     }
 
     async fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
+        self.indexer.set(key, 200);
         let mut bytes =
             Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
 
