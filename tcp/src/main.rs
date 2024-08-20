@@ -6,12 +6,12 @@ use std::process::ExitCode;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+use core::command;
 use core::config;
 use core::storage;
 use log;
 
 mod args;
-mod command;
 mod tcp;
 
 #[tokio::main]
