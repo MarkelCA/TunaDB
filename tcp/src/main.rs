@@ -3,10 +3,12 @@ use args::Args;
 use clap::Parser;
 use env_logger::Env;
 use std::process::ExitCode;
+use std::str::FromStr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use tokio::sync::mpsc::error;
 
-use core::command;
+use core::command::{self, Command};
 use core::config;
 use core::storage;
 use log;
@@ -71,7 +73,14 @@ async fn init() -> anyhow::Result<()> {
                 }
                 log::info!("Received command: \"{}\"", command.unwrap().trim());
                 // We can use unwrap here because the error is handled above
-                let response = command::run(&mut engine, command.unwrap()).await; // Pass a reference to the engine
+                let command = match Command::from_str(command.unwrap()) {
+                    Ok(cmd) => cmd,
+                    Err(error) => {
+                        log::error!("{}", error);
+                        continue;
+                    }
+                };
+                let response = command::run(&mut engine, command).await; // Pass a reference to the engine
 
                 match response {
                     Ok(response) => {
