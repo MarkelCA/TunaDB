@@ -1,6 +1,7 @@
-const ENCODING_VERSION: u8 = 1;
-const KEY_LENGTH_SIZE: usize = 1;
-const VALUE_LENGTH_SIZE: usize = 2;
+pub const ENCODING_VERSION: u8 = 1;
+pub const KEY_LENGTH_SIZE: usize = 1;
+pub const VALUE_LENGTH_SIZE: usize = 2;
+pub const TOMBSTONE_SIZE: usize = 1;
 
 use std::collections::HashSet;
 use std::io::{Read, Seek};
@@ -88,7 +89,7 @@ pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
     file.read_exact(&mut version)?;
 
     let file = Arc::new(Mutex::new(open_file(file_path)?));
-    let indexer = Box::new(BinaryOffsetIndexer::new());
+    let indexer = Box::new(BinaryOffsetIndexer::new(file.clone()));
 
     match version[0] {
         1 => Ok(Box::new(BinaryEngineV1 { file, indexer })),
@@ -100,7 +101,7 @@ pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
 impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
         let file = Arc::new(Mutex::new(open_file(file_path)?));
-        let indexer = Box::new(BinaryOffsetIndexer::new());
+        let indexer = Box::new(BinaryOffsetIndexer::new(file.clone()));
 
         Ok(BinaryEngineV1 { file, indexer })
     }
@@ -109,7 +110,12 @@ impl BinaryEngineV1 {
 #[async_trait]
 impl Engine for BinaryEngineV1 {
     async fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
-        self.indexer.get(key);
+        let value = self.indexer.get(key).await?;
+
+        if let Some(value) = value {
+            return Ok(Some(value));
+        }
+
         let mut value: Option<String> = None;
         self.file.lock().await.seek(std::io::SeekFrom::Start(1))?; // Skip encoding version byte
 
@@ -152,9 +158,9 @@ impl Engine for BinaryEngineV1 {
     }
 
     async fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
-        self.indexer.set(key, 200);
-        let mut bytes =
-            Vec::with_capacity(KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + 1);
+        let mut bytes = Vec::with_capacity(
+            KEY_LENGTH_SIZE + key.len() + VALUE_LENGTH_SIZE + value.len() + TOMBSTONE_SIZE,
+        );
 
         // Add the length of the key (1 byte)
         bytes.push(key.len() as u8);
@@ -172,7 +178,14 @@ impl Engine for BinaryEngineV1 {
         // We add the tombstone byte (not deleted by default)
         bytes.push(0);
 
+        let size = self.file.lock().await.seek(std::io::SeekFrom::End(0))?;
+
+        self.indexer
+            .set(key, size + KEY_LENGTH_SIZE as u64 + key.len() as u64)
+            .await;
+
         self.file.lock().await.write_all(&bytes)?;
+
         Ok(())
     }
 
