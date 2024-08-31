@@ -22,6 +22,7 @@ fn main() -> Result<()> {
     let proto_includes = &[PROTO_OUT_DIR];
 
     prost_build::Config::new()
+        .protoc_arg("--experimental_allow_proto3_optional")
         .out_dir(PROTO_OUT_DIR)
         .compile_protos(&proto_files, proto_includes)
         .expect("Failed to compile .proto files");

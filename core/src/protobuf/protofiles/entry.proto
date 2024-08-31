@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package entry;
-
-message Item {
-  string key = 1;
-  string value = 2;
-}

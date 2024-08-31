@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package command;
+
+// A snazzy new shirt!
+message Command {
+  enum Operation {
+    GET = 0;
+    SET = 1;
+    DEL = 2;
+    LIST = 4;
+  }
+
+  string color = 1;
+  Operation size = 2;
+  optional string value = 3;
+}

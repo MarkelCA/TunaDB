@@ -12,8 +12,8 @@ home = "0.5.9"
 serde = { version = "1.0.204", features = ["derive"] }
 toml = "0.8.16"
 async-trait = "0.1.81"
-
-[build-dependencies]
 prost = "0.13.2"
 prost-types = "0.13.2"
+
+[build-dependencies]
 prost-build = "0.13.2"
