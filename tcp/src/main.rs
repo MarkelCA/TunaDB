@@ -43,7 +43,7 @@ async fn init() -> anyhow::Result<()> {
 
     loop {
         let (mut socket, _) = listener.accept().await?;
-        let engine = Arc::clone(&engine); // Clone the engine for each connection
+        let engine = engine.clone(); // Clone the engine pointer for each connection
 
         tokio::spawn(async move {
             let mut buf = [0; 1024];
@@ -81,8 +81,7 @@ async fn init() -> anyhow::Result<()> {
                         continue;
                     }
                 };
-                let engine = Arc::clone(&engine); // Clone the Arc here
-                let response = command::run(engine, command).await; // Pass a reference to the engine
+                let response = command::run(engine.clone(), command).await; // Pass a reference to the engine
 
                 match response {
                     Ok(response) => {

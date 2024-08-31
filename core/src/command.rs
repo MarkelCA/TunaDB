@@ -52,10 +52,7 @@ impl FromStr for Command {
     }
 }
 
-pub async fn run(
-    engine: Arc<Mutex<EngineEnum<BinaryOffsetIndexer>>>,
-    command: Command,
-) -> anyhow::Result<String> {
+pub async fn run(engine: Arc<Mutex<EngineEnum>>, command: Command) -> anyhow::Result<String> {
     match command {
         Command::Get { key } => match engine.lock().await.get(&key).await {
             Ok(value) => match value {

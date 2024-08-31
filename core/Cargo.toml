@@ -11,3 +11,4 @@ tokio = { version = "1.39.1", features = ["full"] }
 home = "0.5.9"
 serde = { version = "1.0.204", features = ["derive"] }
 toml = "0.8.16"
+async-trait = "0.1.81"

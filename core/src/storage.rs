@@ -9,9 +9,11 @@ use std::{fs::File, fs::OpenOptions, io::Write, path::Path};
 
 use crate::index::{BinaryOffsetIndexer, OffsetIndexer};
 use anyhow::Error;
+use async_trait::async_trait;
 use tokio::sync::Mutex;
 
-pub trait Engine: Send + Clone {
+#[async_trait]
+pub trait Engine: Send {
     async fn set(&mut self, key: &str, value: &str) -> std::io::Result<()>;
     async fn delete(&mut self, key: &str) -> std::io::Result<()>;
     async fn get(&mut self, key: &str) -> Result<Option<String>, Error>;
@@ -66,10 +68,9 @@ fn open_file(file_path: &str) -> Result<File, std::io::Error> {
 * Note: the length of the value is stored as a 16-bit unsigned integer.
 * Note: the key and value are stored as UTF-8 strings.
 */
-#[derive(Clone)]
-pub struct BinaryEngineV1<T: OffsetIndexer> {
+pub struct BinaryEngineV1 {
     file: Arc<Mutex<File>>,
-    indexer: Box<T>,
+    indexer: Box<dyn OffsetIndexer>,
 }
 
 /**
@@ -77,7 +78,7 @@ pub struct BinaryEngineV1<T: OffsetIndexer> {
 * the encoding version from the file (first byte) and
 * returns the appropriate Engine implementation.
 */
-pub fn new_engine(file_path: &str) -> Result<EngineEnum<BinaryOffsetIndexer>, std::io::Error> {
+pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
     let mut file = open_file(file_path)?;
     let mut version = [0; 1];
 
@@ -93,7 +94,7 @@ pub fn new_engine(file_path: &str) -> Result<EngineEnum<BinaryOffsetIndexer>, st
     }
 }
 
-impl BinaryEngineV1<BinaryOffsetIndexer> {
+impl BinaryEngineV1 {
     pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
         let file = Arc::new(Mutex::new(open_file(file_path)?));
         let indexer = Box::new(BinaryOffsetIndexer::new());
@@ -102,7 +103,8 @@ impl BinaryEngineV1<BinaryOffsetIndexer> {
     }
 }
 
-impl<T: OffsetIndexer> Engine for BinaryEngineV1<T> {
+#[async_trait]
+impl Engine for BinaryEngineV1 {
     async fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
         self.indexer.get(key);
         let mut value: Option<String> = None;
@@ -238,7 +240,6 @@ impl<T: OffsetIndexer> Engine for BinaryEngineV1<T> {
 /**
 * Uses a LSM-tree to store key-value pairs in a file.
 */
-#[derive(Clone)]
 pub struct LSMTreeEngine {
     _file: Arc<Mutex<File>>,
 }
@@ -251,6 +252,7 @@ impl LSMTreeEngine {
     }
 }
 
+#[async_trait]
 impl Engine for LSMTreeEngine {
     async fn get(&mut self, _key: &str) -> Result<Option<String>, Error> {
         unimplemented!()
@@ -270,13 +272,13 @@ impl Engine for LSMTreeEngine {
 }
 
 //////////////
-#[derive(Clone)]
-pub enum EngineEnum<T: OffsetIndexer> {
-    BinaryEngineV1(BinaryEngineV1<T>),
+pub enum EngineEnum {
+    BinaryEngineV1(BinaryEngineV1),
     LSMTreeEngine(LSMTreeEngine),
 }
 
-impl<T: OffsetIndexer> Engine for EngineEnum<T> {
+#[async_trait]
+impl Engine for EngineEnum {
     async fn delete(&mut self, key: &str) -> std::io::Result<()> {
         match self {
             EngineEnum::BinaryEngineV1(engine) => engine.delete(key).await,

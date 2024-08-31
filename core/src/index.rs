@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use std::collections::HashMap;
 
-pub trait OffsetIndexer: Send + Clone {
+#[async_trait]
+pub trait OffsetIndexer: Send {
     fn get(&self, key: &str);
     fn set(&mut self, key: &str, offset: u64);
 }
