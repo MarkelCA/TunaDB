@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package snazzy.items;
+package snazzy.clothes;
 
 // A snazzy new shirt!
 message Shirt {

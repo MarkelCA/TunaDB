@@ -1,7 +1,7 @@
 # TunaDB 🐟
+A key-value storage system written in Rust for learning purposes. It currently uses a simple length-prefixed binary encoding format for storage files and an in-memory byte offset HashMap as its indexing strategy. The server uses protocol buffers for communication with clients and is implemented using the gRPC framework. The client is a simple command-line interface that allows users to interact with the server using a TCP connection.
 
-Key-value storage written in rust for learning purposes. Working on cli and tcp-server implementations. Right now uses a simple length-prefixed binary encoding format for the storage files, but there's plans to use other strategies such as LSM trees in the future.
-
+Implementation details, including the storage/indexing algorithms and communication protocols, are abstracted and subject to change. There are plans to implement more sophisticated data structures, such as B-Trees and LSM-Trees, in the future, as well as a custom protocol for communication between the server and clients.
 ## Build
 
 ### Requirements
