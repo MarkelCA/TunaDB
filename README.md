@@ -7,6 +7,7 @@ Key-value storage written in rust for learning purposes. Working on cli and tcp-
 ### Requirements
 - [Git](https://git-scm.com/)
 - [Cargo](https://github.com/rust-lang/cargo)
+- [protoc](https://grpc.io/docs/protoc-installation/)
 
 ```bash
 git clone https://github.com/MarkelCA/tunadb.git
