@@ -1,4 +1,7 @@
-use crate::storage::Engine;
+use crate::{
+    proto::{self, command::Operation},
+    storage::Engine,
+};
 use anyhow::anyhow;
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -67,6 +70,49 @@ pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyho
             Err(e) => Ok(format!("error: {}", e)),
         },
         Command::List => {
+            let mut result = String::new();
+            match engine.lock().await.list().await {
+                Ok(keys) => {
+                    for key in keys {
+                        result.push_str(&format!("- {}\n", key));
+                    }
+                    result.push_str("\n");
+                }
+                Err(e) => {
+                    result.push_str(&format!("error: {}\n", e));
+                }
+            }
+            Ok(result)
+        }
+    }
+}
+
+pub async fn run_proto(
+    engine: Arc<Mutex<Box<dyn Engine>>>,
+    command: proto::Command,
+) -> anyhow::Result<String> {
+    match command.operation() {
+        Operation::Get => match engine.lock().await.get(&command.key).await {
+            Ok(value) => match value {
+                Some(v) => Ok(format!("{}\n", v)),
+                None => Ok("(nil)\n".to_string()),
+            },
+            Err(e) => Ok(format!("error: {}\n", e)),
+        },
+        Operation::Set => match engine
+            .lock()
+            .await
+            .set(&command.key, &command.value())
+            .await
+        {
+            Ok(_) => Ok("ok\n".to_string()),
+            Err(e) => Ok(format!("error: {}", e)),
+        },
+        Operation::Del => match engine.lock().await.delete(&command.key).await {
+            Ok(_) => Ok("ok\n".to_string()),
+            Err(e) => Ok(format!("error: {}", e)),
+        },
+        Operation::List => {
             let mut result = String::new();
             match engine.lock().await.list().await {
                 Ok(keys) => {

@@ -184,6 +184,7 @@ dependencies = [
  "anyhow",
  "clap",
  "core",
+ "prost",
  "tokio",
 ]
 
@@ -668,6 +669,7 @@ dependencies = [
  "core",
  "env_logger",
  "log",
+ "prost",
  "tokio",
 ]
 

@@ -2,10 +2,10 @@
 /// A snazzy new shirt!
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Command {
-    #[prost(string, tag = "1")]
-    pub color: ::prost::alloc::string::String,
-    #[prost(enumeration = "command::Operation", tag = "2")]
-    pub size: i32,
+    #[prost(enumeration = "command::Operation", tag = "1")]
+    pub operation: i32,
+    #[prost(string, tag = "2")]
+    pub key: ::prost::alloc::string::String,
     #[prost(string, optional, tag = "3")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
 }

@@ -11,7 +11,7 @@ message Command {
     LIST = 4;
   }
 
-  string color = 1;
-  Operation size = 2;
+  Operation operation = 1;
+  string key = 2;
   optional string value = 3;
 }
