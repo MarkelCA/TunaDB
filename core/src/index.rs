@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-pub trait OffsetIndexer {
+pub trait OffsetIndexer: Send + Clone {
     fn get(&self, key: &str);
     fn set(&mut self, key: &str, offset: u64);
 }
 
+#[derive(Clone)]
 pub struct BinaryOffsetIndexer {
     offsets: HashMap<String, u64>,
 }

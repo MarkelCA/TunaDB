@@ -1,6 +1,10 @@
-use crate::storage::{Engine, EngineEnum};
+use crate::{
+    index::{BinaryOffsetIndexer, OffsetIndexer},
+    storage::{Engine, EngineEnum},
+};
 use anyhow::anyhow;
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
+use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub enum Command {
@@ -48,26 +52,29 @@ impl FromStr for Command {
     }
 }
 
-pub async fn run(engine: &mut EngineEnum, command: Command) -> anyhow::Result<String> {
+pub async fn run(
+    engine: Arc<Mutex<EngineEnum<BinaryOffsetIndexer>>>,
+    command: Command,
+) -> anyhow::Result<String> {
     match command {
-        Command::Get { key } => match engine.get(&key).await {
+        Command::Get { key } => match engine.lock().await.get(&key).await {
             Ok(value) => match value {
                 Some(v) => Ok(format!("{}\n", v)),
                 None => Ok("(nil)\n".to_string()),
             },
             Err(e) => Ok(format!("error: {}\n", e)),
         },
-        Command::Set { key, value } => match engine.set(&key, &value).await {
+        Command::Set { key, value } => match engine.lock().await.set(&key, &value).await {
             Ok(_) => Ok("ok\n".to_string()),
             Err(e) => Ok(format!("error: {}", e)),
         },
-        Command::Del { key } => match engine.delete(&key).await {
+        Command::Del { key } => match engine.lock().await.delete(&key).await {
             Ok(_) => Ok("ok\n".to_string()),
             Err(e) => Ok(format!("error: {}", e)),
         },
         Command::List => {
             let mut result = String::new();
-            match engine.list().await {
+            match engine.lock().await.list().await {
                 Ok(keys) => {
                     for key in keys {
                         result.push_str(&format!("- {}\n", key));

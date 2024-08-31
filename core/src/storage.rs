@@ -67,9 +67,9 @@ fn open_file(file_path: &str) -> Result<File, std::io::Error> {
 * Note: the key and value are stored as UTF-8 strings.
 */
 #[derive(Clone)]
-pub struct BinaryEngineV1 {
+pub struct BinaryEngineV1<T: OffsetIndexer> {
     file: Arc<Mutex<File>>,
-    indexer: Box<dyn OffsetIndexer>,
+    indexer: Box<T>,
 }
 
 /**
@@ -77,7 +77,7 @@ pub struct BinaryEngineV1 {
 * the encoding version from the file (first byte) and
 * returns the appropriate Engine implementation.
 */
-pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
+pub fn new_engine(file_path: &str) -> Result<EngineEnum<BinaryOffsetIndexer>, std::io::Error> {
     let mut file = open_file(file_path)?;
     let mut version = [0; 1];
 
@@ -93,7 +93,7 @@ pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
     }
 }
 
-impl BinaryEngineV1 {
+impl BinaryEngineV1<BinaryOffsetIndexer> {
     pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
         let file = Arc::new(Mutex::new(open_file(file_path)?));
         let indexer = Box::new(BinaryOffsetIndexer::new());
@@ -102,7 +102,7 @@ impl BinaryEngineV1 {
     }
 }
 
-impl Engine for BinaryEngineV1 {
+impl<T: OffsetIndexer> Engine for BinaryEngineV1<T> {
     async fn get(&mut self, key: &str) -> Result<Option<String>, Error> {
         self.indexer.get(key);
         let mut value: Option<String> = None;
@@ -271,12 +271,12 @@ impl Engine for LSMTreeEngine {
 
 //////////////
 #[derive(Clone)]
-pub enum EngineEnum {
-    BinaryEngineV1(BinaryEngineV1),
+pub enum EngineEnum<T: OffsetIndexer> {
+    BinaryEngineV1(BinaryEngineV1<T>),
     LSMTreeEngine(LSMTreeEngine),
 }
 
-impl Engine for EngineEnum {
+impl<T: OffsetIndexer> Engine for EngineEnum<T> {
     async fn delete(&mut self, key: &str) -> std::io::Result<()> {
         match self {
             EngineEnum::BinaryEngineV1(engine) => engine.delete(key).await,

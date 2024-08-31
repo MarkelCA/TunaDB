@@ -4,9 +4,10 @@ use clap::Parser;
 use env_logger::Env;
 use std::process::ExitCode;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::error;
+use tokio::sync::Mutex;
 
 use core::command::{self, Command};
 use core::config;
@@ -38,11 +39,11 @@ async fn init() -> anyhow::Result<()> {
     log::info!("Starting server");
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let config = config::parse()?;
-    let engine = storage::new_engine(&config.file_path)?;
+    let engine = Arc::new(Mutex::new(storage::new_engine(&config.file_path)?));
 
     loop {
         let (mut socket, _) = listener.accept().await?;
-        let mut engine = engine.clone(); // Clone the engine for each connection
+        let engine = Arc::clone(&engine); // Clone the engine for each connection
 
         tokio::spawn(async move {
             let mut buf = [0; 1024];
@@ -80,7 +81,8 @@ async fn init() -> anyhow::Result<()> {
                         continue;
                     }
                 };
-                let response = command::run(&mut engine, command).await; // Pass a reference to the engine
+                let engine = Arc::clone(&engine); // Clone the Arc here
+                let response = command::run(engine, command).await; // Pass a reference to the engine
 
                 match response {
                     Ok(response) => {
