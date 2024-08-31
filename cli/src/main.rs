@@ -1,5 +1,4 @@
 extern crate core;
-use std::io::stdin;
 
 use clap::Parser;
 use command::Command;

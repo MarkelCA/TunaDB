@@ -1,7 +1,4 @@
-use crate::{
-    index::{BinaryOffsetIndexer, OffsetIndexer},
-    storage::{Engine, EngineEnum},
-};
+use crate::storage::Engine;
 use anyhow::anyhow;
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -52,7 +49,7 @@ impl FromStr for Command {
     }
 }
 
-pub async fn run(engine: Arc<Mutex<EngineEnum>>, command: Command) -> anyhow::Result<String> {
+pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyhow::Result<String> {
     match command {
         Command::Get { key } => match engine.lock().await.get(&key).await {
             Ok(value) => match value {

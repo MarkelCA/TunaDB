@@ -78,7 +78,7 @@ pub struct BinaryEngineV1 {
 * the encoding version from the file (first byte) and
 * returns the appropriate Engine implementation.
 */
-pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
+pub fn new_engine(file_path: &str) -> Result<Box<dyn Engine>, std::io::Error> {
     let mut file = open_file(file_path)?;
     let mut version = [0; 1];
 
@@ -87,9 +87,12 @@ pub fn new_engine(file_path: &str) -> Result<EngineEnum, std::io::Error> {
 
     file.read_exact(&mut version)?;
 
+    let file = Arc::new(Mutex::new(open_file(file_path)?));
+    let indexer = Box::new(BinaryOffsetIndexer::new());
+
     match version[0] {
-        1 => Ok(EngineEnum::BinaryEngineV1(BinaryEngineV1::new(file_path)?)),
-        2 => Ok(EngineEnum::LSMTreeEngine(LSMTreeEngine::new(file_path)?)),
+        1 => Ok(Box::new(BinaryEngineV1 { file, indexer })),
+        2 => Ok(Box::new(LSMTreeEngine { _file: file })),
         _ => panic!("Unsupported encoding version ({})", version[0]),
     }
 }
@@ -176,7 +179,7 @@ impl Engine for BinaryEngineV1 {
     async fn list(&mut self) -> anyhow::Result<HashSet<String>> {
         let mut keys: HashSet<String> = HashSet::new();
 
-        self.file.lock().await.seek(std::io::SeekFrom::Start(1));
+        let _ = self.file.lock().await.seek(std::io::SeekFrom::Start(1));
 
         let file_size = self.file.lock().await.metadata()?.len();
         while self.file.lock().await.stream_position()? < file_size {
@@ -268,42 +271,5 @@ impl Engine for LSMTreeEngine {
 
     async fn delete(&mut self, _key: &str) -> std::io::Result<()> {
         unimplemented!()
-    }
-}
-
-//////////////
-pub enum EngineEnum {
-    BinaryEngineV1(BinaryEngineV1),
-    LSMTreeEngine(LSMTreeEngine),
-}
-
-#[async_trait]
-impl Engine for EngineEnum {
-    async fn delete(&mut self, key: &str) -> std::io::Result<()> {
-        match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.delete(key).await,
-            EngineEnum::LSMTreeEngine(engine) => engine.delete(key).await,
-        }
-    }
-
-    async fn get(&mut self, key: &str) -> Result<Option<String>, anyhow::Error> {
-        match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.get(key).await,
-            EngineEnum::LSMTreeEngine(engine) => engine.get(key).await,
-        }
-    }
-
-    async fn set(&mut self, key: &str, value: &str) -> Result<(), std::io::Error> {
-        match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.set(key, value).await,
-            EngineEnum::LSMTreeEngine(engine) => engine.set(key, value).await,
-        }
-    }
-
-    async fn list(&mut self) -> Result<HashSet<std::string::String>, anyhow::Error> {
-        match self {
-            EngineEnum::BinaryEngineV1(engine) => engine.list().await,
-            EngineEnum::LSMTreeEngine(engine) => engine.list().await,
-        }
     }
 }

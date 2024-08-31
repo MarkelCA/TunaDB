@@ -1,7 +1,8 @@
 use clap::Parser;
-use core::command;
-use core::config::{self, Config};
-use core::storage::{Engine, EngineEnum};
+use core::{
+    config::{self, Config},
+    storage::Engine,
+};
 
 #[derive(Parser, Debug)]
 pub enum Command {
@@ -34,7 +35,11 @@ pub enum SetConfigCommand {
     FilePath { value: String },
 }
 
-pub async fn run(config: Config, engine: &mut EngineEnum, command: Command) -> anyhow::Result<()> {
+pub async fn run(
+    config: Config,
+    engine: &mut Box<dyn Engine>,
+    command: Command,
+) -> anyhow::Result<()> {
     match command {
         Command::Get { key } => match engine.get(&key).await? {
             Some(value) => println!("{}", value),
