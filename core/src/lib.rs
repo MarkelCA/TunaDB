@@ -5,4 +5,5 @@ pub mod storage;
 
 pub mod proto {
     include!("./protobuf/command.rs");
+    include!("./protobuf/response.rs");
 }

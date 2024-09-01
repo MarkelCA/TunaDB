@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package response;
+
+// A snazzy new shirt!
+message Response {
+  enum Status {
+    NOT_FOUND = 0;
+    OK = 1;
+    ERROR = 2;
+  }
+  Status status = 1;
+  optional string content = 2;
+}

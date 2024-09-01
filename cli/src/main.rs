@@ -2,7 +2,9 @@ extern crate core;
 
 use clap::Parser;
 use command::Command as TunaCommand;
+use core::command::Command;
 use core::proto::command::Operation;
+use core::proto::Response;
 use prost::Message;
 use std::io::stdin;
 use std::net::TcpStream;
@@ -10,6 +12,8 @@ use std::process::ExitCode;
 
 mod command;
 use std::io::{Read, Write};
+
+use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -20,32 +24,31 @@ struct CliArgs {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let mut buffer = String::new();
-
-    let mut cmd = core::proto::Command::default();
-    cmd.key = "x".to_string();
-    cmd.operation = Operation::Get as i32;
-    let mut buf = Vec::new();
-    buf.reserve(cmd.encoded_len());
-    cmd.encode(&mut buf).unwrap();
-
-    println!("{:?}", buf);
-
     let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Couldn't connect to server");
 
     loop {
+        let mut buffer = String::new();
         let _ = stdin().read_line(&mut buffer);
 
+        let com = Command::from_str(&buffer).expect("Couldn't parse command");
+        let cmd = com.to_proto_command();
+
+        println!("Command: {:?}", cmd);
+
+        let mut buf = Vec::new();
+        buf.reserve(cmd.encoded_len());
+        cmd.encode(&mut buf).unwrap();
+
         stream.write(&buf).expect("Couldn't write to server");
-        println!("Sent command");
 
         let mut response = [0; 128];
-        stream
+        let n = stream
             .read(&mut response)
             .expect("Couldn't read from server");
 
-        let response_str = String::from_utf8_lossy(&response);
-        println!("Response: {:?}", response_str);
+        let r = Response::decode(&response[..n]).expect("Couldn't decode response");
+
+        println!("Response: {:?}", r);
 
         if buffer.trim() == "exit" {
             println!("bye");

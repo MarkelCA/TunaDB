@@ -1,5 +1,5 @@
 use crate::{
-    proto::{self, command::Operation},
+    proto::{self, command::Operation, Response},
     storage::Engine,
 };
 use anyhow::anyhow;
@@ -16,6 +16,33 @@ pub enum Command {
     Del { key: String },
     /// Lists all keys in the database
     List,
+}
+
+impl Command {
+    pub fn to_proto_command(&self) -> proto::Command {
+        match self {
+            Command::Get { key } => proto::Command {
+                key: key.to_string(),
+                operation: Operation::Get as i32,
+                value: None,
+            },
+            Command::Set { key, value } => proto::Command {
+                key: key.to_string(),
+                operation: Operation::Set as i32,
+                value: Some(value.to_string()),
+            },
+            Command::Del { key } => proto::Command {
+                key: key.to_string(),
+                operation: Operation::Del as i32,
+                value: None,
+            },
+            Command::List => proto::Command {
+                key: "".to_string(),
+                operation: Operation::List as i32,
+                value: None,
+            },
+        }
+    }
 }
 
 impl FromStr for Command {
@@ -87,17 +114,23 @@ pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyho
     }
 }
 
-pub async fn run_proto(
-    engine: Arc<Mutex<Box<dyn Engine>>>,
-    command: proto::Command,
-) -> anyhow::Result<String> {
+pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: proto::Command) -> Response {
     match command.operation() {
         Operation::Get => match engine.lock().await.get(&command.key).await {
             Ok(value) => match value {
-                Some(v) => Ok(format!("{}\n", v)),
-                None => Ok("(nil)\n".to_string()),
+                Some(v) => Response {
+                    status: proto::response::Status::Ok as i32,
+                    content: Some(v),
+                },
+                None => Response {
+                    status: proto::response::Status::NotFound as i32,
+                    content: None,
+                },
             },
-            Err(e) => Ok(format!("error: {}\n", e)),
+            Err(e) => Response {
+                status: proto::response::Status::Error as i32,
+                content: Some(format!("error: {}", e)),
+            },
         },
         Operation::Set => match engine
             .lock()
@@ -105,12 +138,24 @@ pub async fn run_proto(
             .set(&command.key, &command.value())
             .await
         {
-            Ok(_) => Ok("ok\n".to_string()),
-            Err(e) => Ok(format!("error: {}", e)),
+            Ok(_) => Response {
+                status: proto::response::Status::Ok as i32,
+                content: None,
+            },
+            Err(e) => Response {
+                status: proto::response::Status::Error as i32,
+                content: Some(format!("error: {}", e)),
+            },
         },
         Operation::Del => match engine.lock().await.delete(&command.key).await {
-            Ok(_) => Ok("ok\n".to_string()),
-            Err(e) => Ok(format!("error: {}", e)),
+            Ok(_) => Response {
+                status: proto::response::Status::Ok as i32,
+                content: None,
+            },
+            Err(e) => Response {
+                status: proto::response::Status::Error as i32,
+                content: Some(format!("error: {}", e)),
+            },
         },
         Operation::List => {
             let mut result = String::new();
@@ -125,7 +170,10 @@ pub async fn run_proto(
                     result.push_str(&format!("error: {}\n", e));
                 }
             }
-            Ok(result)
+            Response {
+                status: proto::response::Status::Ok as i32,
+                content: Some(result),
+            }
         }
     }
 }

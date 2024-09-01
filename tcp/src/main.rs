@@ -4,13 +4,12 @@ use clap::Parser;
 use env_logger::Env;
 use prost::Message;
 use std::process::ExitCode;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-use core::command::{self, Command};
+use core::command::{self};
 use core::config;
 use core::storage;
 use log;
@@ -62,10 +61,6 @@ async fn init() -> anyhow::Result<()> {
                     }
                 };
 
-                println!("Received a command!");
-                // Write the data back
-                let command = std::str::from_utf8(&buf[0..n]);
-                println!("Received command: {:?}", command);
                 let proto_command = core::proto::Command::decode(&buf[0..n]);
 
                 if let Err(e) = proto_command {
@@ -76,38 +71,16 @@ async fn init() -> anyhow::Result<()> {
                     }
                     continue;
                 }
-
-                // log::info!("Received command: \"{}\"", command.unwrap().trim());
-                // // We can use unwrap here because the error is handled above
-                // let command = match Command::from_str(command.unwrap()) {
-                //     Ok(cmd) => cmd,
-                //     Err(error) => {
-                //         log::error!("{}", error);
-                //         continue;
-                //     }
-                // };
-                // // let response = command::run(engine.clone(), command).await; // Pass a reference to the engine
+                println!("Command: {:?}", proto_command);
                 let response = command::run_proto(engine.clone(), proto_command.unwrap()).await; // Pass a reference to the engine
+                let mut buf = Vec::new();
+                buf.reserve(response.encoded_len());
 
-                match response {
-                    Ok(response) => {
-                        if let Err(e) = socket.write_all(response.as_bytes()).await {
-                            log::error!("failed to write to socket; err = {:?}", e);
-                            eprintln!("failed to write to socket; err = {:?}", e);
-                            return;
-                        }
-                    }
-                    Err(e) => {
-                        if let Err(e) = socket
-                            .write_all(format!("{}\n", e.to_string()).as_bytes())
-                            .await
-                        {
-                            log::error!("failed to write to socket; err = {:?}", e);
-                            eprintln!("failed to write to socket; err = {:?}", e);
-                            return;
-                        }
-                    }
-                }
+                // Unwrap is safe, since we have reserved sufficient capacity in the vector.
+                response.encode(&mut buf).unwrap();
+                println!("Buffer: {:?}", buf);
+                let _ = socket.write_all(&buf).await;
+                println!("Response: {:?}", response);
             }
         });
     }
