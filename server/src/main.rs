@@ -36,11 +36,12 @@ async fn init() -> anyhow::Result<()> {
     }
     env_logger::init_from_env(Env::default().default_filter_or(args.log_level.to_string()));
 
-    log::info!("Starting server in port {}", args.port);
+    log::info!("Starting server in port {}...", args.port);
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let config = config::parse()?;
     let engine = Arc::new(Mutex::new(storage::new_engine(&config.file_path)?));
 
+    log::info!("Server started");
     loop {
         let (mut socket, _) = listener.accept().await?;
         let engine = engine.clone(); // Clone the engine pointer for each connection

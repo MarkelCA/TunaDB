@@ -1,5 +1,5 @@
 [package]
-name = "tcp"
+name = "server"
 description = "TunaDB. A simple key-value storage written in Rust."
 version = "0.1.0"
 edition = "2021"

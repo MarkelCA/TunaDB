@@ -619,6 +619,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "core",
+ "env_logger",
+ "log",
+ "prost",
+ "tokio",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -658,19 +671,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tcp"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "core",
- "env_logger",
- "log",
- "prost",
- "tokio",
 ]
 
 [[package]]

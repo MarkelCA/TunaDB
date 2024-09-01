@@ -1,7 +1,10 @@
 # TunaDB 🐟
-A key-value storage system written in Rust for learning purposes. It currently uses a simple length-prefixed binary encoding format for storage files and an in-memory byte offset HashMap as its indexing strategy. The server uses protocol buffers for communication with clients and is implemented using the gRPC framework. The client is a simple command-line interface that allows users to interact with the server using a TCP connection.
+A key-value storage system written in Rust for learning purposes. Inspired by the book "Designing Data-Intensive Applications" by Martin Kleppmann.
 
-Implementation details, including the storage/indexing algorithms and communication protocols, are abstracted and subject to change. There are plans to implement more sophisticated data structures, such as B-Trees and LSM-Trees, in the future, as well as a custom protocol for communication between the server and clients.
+### Technical details
+It currently uses a simple length-prefixed binary encoding format for storage files and an in-memory byte offset HashMap as its indexing strategy. The server uses protocol buffers for communication with clients and is implemented using the gRPC framework.
+
+Implementation details, including the storage/indexing algorithms and communication protocols, are abstracted and subject to change. There are plans to implement more sophisticated data structures, such as B-Trees and LSM-Trees, in the future, as well as a custom protocol for communication between the server and client.
 ## Build
 
 ### Requirements
@@ -12,46 +15,59 @@ Implementation details, including the storage/indexing algorithms and communicat
 ```bash
 git clone https://github.com/MarkelCA/tunadb.git
 cd tunadb
-# For cli
+# For the server
+cargo install --path ./server
+# For the client
 cargo install --path ./cli
-# For tcp server
-cargo install --path ./tcp
 ```
-
 
 ## Usage
-### cli
+### server
+You can check the server parameters with `tuna-server --help`:
 ```
-$ tuna
-TunaDB. A simple key-value storage written in Rust
+$ tuna-server --help
+TunaDB. A simple key-value storage written in Rust.
 
-Usage: tuna <COMMAND>
-
-Commands:
-  get     Get the value for the specified key
-  set     Sets the value for the specified key
-  del     Deletes the specified key
-  config  Manages the database configuration
-  list    Lists all keys in the database
-  help    Print this message or the help of the given subcommand(s)
+Usage: tuna-server [OPTIONS]
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+  -l, --log-level <LOG_LEVEL>  [default: info] [possible values: error, warn, info, debug, trace]
+  -p, --port <PORT>            [default: 5880]
+  -h, --help                   Print help
+  -V, --version                Print version
+
 ```
-### tcp
 Start the server:
 ```
-tuna-server --log-level info --port 8080
+$ tuna-server
+[2024-09-01T10:08:57Z INFO  tuna_server] Starting server in port 5880...
+[2024-09-01T10:08:57Z INFO  tuna_server] Server started
 ```
-Connect to the server (in another terminal):
+
+### cli
+You can check the client parameters with `tuna --help`:
 ```
-$ nc localhost 8080
+$ tuna --help
+TunaDB client. The command line interface for the Tuna database.
+
+Usage: tuna [OPTIONS]
+
+Options:
+      --host <HOST>  Host to connect to [default: 127.0.0.1]
+      --port <PORT>  Port to connect to [default: 5880]
+  -h, --help         Print help
+  -V, --version      Print version
+```
+Start the client:
+```
+$ tuna
+Connecting to 127.0.0.1:5880...
+Connected to server. Type 'help' for a list of commands.
 help
-Commands:
-get <key> - Get the value for the specified key
-set <key> <value> - Sets the value for the specified key
-del <key> - Deletes the specified key
-list - Lists all keys in the database
-help - Prints the help message
+Available commands:
+  get <key>
+  set <key> <value
+  del <key>
+  list
+  exit
 ```
