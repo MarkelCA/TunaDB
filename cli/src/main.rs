@@ -1,5 +1,6 @@
 extern crate core;
 
+use anyhow::Error;
 use clap::Parser;
 use command::Command as TunaCommand;
 use core::command::Command;
@@ -26,36 +27,61 @@ struct CliArgs {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Couldn't connect to server");
+    let mut stream = match TcpStream::connect("127.0.0.1:8080") {
+        Ok(stream) => stream,
+        Err(e) => {
+            println!("Couldn't connect to server: {}", e);
+            return ExitCode::from(1);
+        }
+    };
 
     loop {
         let mut buffer = String::new();
-        let _ = stdin().read_line(&mut buffer);
-
-        let com = Command::from_str(&buffer).expect("Couldn't parse command");
-        let cmd = com.to_proto_command();
-
-        let mut buf = Vec::new();
-        buf.reserve(cmd.encoded_len());
-        cmd.encode(&mut buf).unwrap();
-
-        stream.write(&buf).expect("Couldn't write to server");
-
-        let mut response_bytes = [0; 128];
-        let n = stream
-            .read(&mut response_bytes)
-            .expect("Couldn't read from server");
-
-        let response = Response::decode(&response_bytes[..n]).expect("Couldn't decode response");
-        print_response(cmd, response);
+        let cmd = match read_command(&mut buffer) {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                println!("error: {}", e);
+                continue;
+            }
+        };
 
         if buffer.trim() == "exit" {
             println!("bye");
             break;
         }
+
+        if let Err(e) = send_command(&cmd, &mut stream) {
+            println!("error: {}", e);
+            continue;
+        }
+
+        match read_response(&mut stream) {
+            Ok(response) => print_response(cmd, response),
+            Err(e) => println!("error: {}", e),
+        }
     }
 
     ExitCode::from(0)
+}
+
+fn read_command(mut buffer: &mut String) -> Result<ProtoCommand, Error> {
+    let _ = stdin().read_line(&mut buffer);
+    let cmd = Command::from_str(&buffer)?;
+    Ok(cmd.to_proto_command())
+}
+
+fn send_command(cmd: &ProtoCommand, stream: &mut TcpStream) -> Result<(), Error> {
+    let mut buf = Vec::new();
+    buf.reserve(cmd.encoded_len());
+    cmd.encode(&mut buf)?;
+    stream.write(&buf)?;
+    Ok(())
+}
+
+fn read_response(stream: &mut TcpStream) -> Result<Response, Error> {
+    let mut response_bytes = [0; 128];
+    let n = stream.read(&mut response_bytes)?;
+    Ok(Response::decode(&response_bytes[..n])?)
 }
 
 fn print_response(command: ProtoCommand, response: Response) {
