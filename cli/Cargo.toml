@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-description = "TunaDB. A simple key-value storage written in Rust"
+description = "TunaDB client. The command line interface for the Tuna database."
 version = "0.1.0"
 edition = "2021"
 
