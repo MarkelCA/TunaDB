@@ -71,16 +71,13 @@ async fn init() -> anyhow::Result<()> {
                     }
                     continue;
                 }
-                println!("Command: {:?}", proto_command);
                 let response = command::run_proto(engine.clone(), proto_command.unwrap()).await; // Pass a reference to the engine
                 let mut buf = Vec::new();
                 buf.reserve(response.encoded_len());
 
                 // Unwrap is safe, since we have reserved sufficient capacity in the vector.
                 response.encode(&mut buf).unwrap();
-                println!("Buffer: {:?}", buf);
                 let _ = socket.write_all(&buf).await;
-                println!("Response: {:?}", response);
             }
         });
     }

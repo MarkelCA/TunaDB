@@ -86,15 +86,15 @@ pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyho
                 Some(v) => Ok(format!("{}\n", v)),
                 None => Ok("(nil)\n".to_string()),
             },
-            Err(e) => Ok(format!("error: {}\n", e)),
+            Err(e) => Ok(e.to_string()),
         },
         Command::Set { key, value } => match engine.lock().await.set(&key, &value).await {
             Ok(_) => Ok("ok\n".to_string()),
-            Err(e) => Ok(format!("error: {}", e)),
+            Err(e) => Ok(e.to_string()),
         },
         Command::Del { key } => match engine.lock().await.delete(&key).await {
             Ok(_) => Ok("ok\n".to_string()),
-            Err(e) => Ok(format!("error: {}", e)),
+            Err(e) => Ok(e.to_string()),
         },
         Command::List => {
             let mut result = String::new();
@@ -106,7 +106,7 @@ pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyho
                     result.push_str("\n");
                 }
                 Err(e) => {
-                    result.push_str(&format!("error: {}\n", e));
+                    result.push_str(&e.to_string());
                 }
             }
             Ok(result)

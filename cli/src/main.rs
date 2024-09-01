@@ -4,6 +4,8 @@ use clap::Parser;
 use command::Command as TunaCommand;
 use core::command::Command;
 use core::proto::command::Operation;
+use core::proto::response::Status;
+use core::proto::Command as ProtoCommand;
 use core::proto::Response;
 use prost::Message;
 use std::io::stdin;
@@ -33,22 +35,19 @@ async fn main() -> ExitCode {
         let com = Command::from_str(&buffer).expect("Couldn't parse command");
         let cmd = com.to_proto_command();
 
-        println!("Command: {:?}", cmd);
-
         let mut buf = Vec::new();
         buf.reserve(cmd.encoded_len());
         cmd.encode(&mut buf).unwrap();
 
         stream.write(&buf).expect("Couldn't write to server");
 
-        let mut response = [0; 128];
+        let mut response_bytes = [0; 128];
         let n = stream
-            .read(&mut response)
+            .read(&mut response_bytes)
             .expect("Couldn't read from server");
 
-        let r = Response::decode(&response[..n]).expect("Couldn't decode response");
-
-        println!("Response: {:?}", r);
+        let response = Response::decode(&response_bytes[..n]).expect("Couldn't decode response");
+        print_response(cmd, response);
 
         if buffer.trim() == "exit" {
             println!("bye");
@@ -59,16 +58,30 @@ async fn main() -> ExitCode {
     ExitCode::from(0)
 }
 
-// fn main_old() {
-//     let args = CliArgs::parse();
-//     let config = config::parse().expect("config couldn't be found");
-//     let mut engine = storage::new_engine(&config.file_path).expect("Couldn't create engine");
-//
-//     match command::run(config, &mut engine, args.command).await {
-//         Err(err) => {
-//             println!("Error: {}", err.to_string());
-//             ExitCode::from(1)
-//         }
-//         Ok(_) => ExitCode::from(0),
-//     }
-// }
+fn print_response(command: ProtoCommand, response: Response) {
+    match response.status() {
+        Status::Unespecified => {
+            println!("UNSPECIFIED");
+        }
+        Status::Ok => match command.operation() {
+            Operation::Get => {
+                println!("{}", response.content());
+            }
+            Operation::Set => {
+                println!("ok");
+            }
+            Operation::Del => {
+                println!("ok");
+            }
+            Operation::List => {
+                println!("{}", response.content());
+            }
+        },
+        Status::Error => {
+            println!("error: {}", response.content());
+        }
+        Status::NotFound => {
+            println!("(nil)");
+        }
+    }
+}
