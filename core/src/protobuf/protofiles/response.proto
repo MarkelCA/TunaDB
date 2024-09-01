@@ -5,9 +5,10 @@ package response;
 // A snazzy new shirt!
 message Response {
   enum Status {
-    NOT_FOUND = 0;
-    OK = 1;
-    ERROR = 2;
+    UNESPECIFIED = 0;
+    NOT_FOUND = 1;
+    OK = 2;
+    ERROR = 3;
   }
   Status status = 1;
   optional string content = 2;

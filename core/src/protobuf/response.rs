@@ -22,9 +22,10 @@ pub mod response {
     )]
     #[repr(i32)]
     pub enum Status {
-        NotFound = 0,
-        Ok = 1,
-        Error = 2,
+        Unespecified = 0,
+        NotFound = 1,
+        Ok = 2,
+        Error = 3,
     }
     impl Status {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -33,6 +34,7 @@ pub mod response {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
+                Status::Unespecified => "UNESPECIFIED",
                 Status::NotFound => "NOT_FOUND",
                 Status::Ok => "OK",
                 Status::Error => "ERROR",
@@ -41,6 +43,7 @@ pub mod response {
         /// Creates an enum from field names used in the ProtoBuf definition.
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
+                "UNESPECIFIED" => Some(Self::Unespecified),
                 "NOT_FOUND" => Some(Self::NotFound),
                 "OK" => Some(Self::Ok),
                 "ERROR" => Some(Self::Error),
