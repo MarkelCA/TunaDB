@@ -43,6 +43,22 @@ impl Command {
             },
         }
     }
+
+    pub fn from_proto_command(cmd: proto::Command) -> Command {
+        match cmd.operation() {
+            Operation::Get => Command::Get {
+                key: cmd.key.to_string(),
+            },
+            Operation::Set => Command::Set {
+                key: cmd.key.to_string(),
+                value: cmd.value().to_string(),
+            },
+            Operation::Del => Command::Del {
+                key: cmd.key.to_string(),
+            },
+            Operation::List => Command::List,
+        }
+    }
 }
 
 impl FromStr for Command {
@@ -114,9 +130,9 @@ pub async fn run(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> anyho
     }
 }
 
-pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: proto::Command) -> Response {
-    match command.operation() {
-        Operation::Get => match engine.lock().await.get(&command.key).await {
+pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) -> Response {
+    match command {
+        Command::Get { key } => match engine.lock().await.get(&key).await {
             Ok(value) => match value {
                 Some(v) => Response {
                     status: proto::response::Status::Ok as i32,
@@ -132,12 +148,7 @@ pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: proto::Comm
                 content: Some(format!("error: {}", e)),
             },
         },
-        Operation::Set => match engine
-            .lock()
-            .await
-            .set(&command.key, &command.value())
-            .await
-        {
+        Command::Set { key, value } => match engine.lock().await.set(&key, &value).await {
             Ok(_) => Response {
                 status: proto::response::Status::Ok as i32,
                 content: None,
@@ -147,7 +158,7 @@ pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: proto::Comm
                 content: Some(format!("error: {}", e)),
             },
         },
-        Operation::Del => match engine.lock().await.delete(&command.key).await {
+        Command::Del { key } => match engine.lock().await.delete(&key).await {
             Ok(_) => Response {
                 status: proto::response::Status::Ok as i32,
                 content: None,
@@ -157,7 +168,7 @@ pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: proto::Comm
                 content: Some(format!("error: {}", e)),
             },
         },
-        Operation::List => {
+        Command::List => {
             let mut result = String::new();
             match engine.lock().await.list().await {
                 Ok(keys) => {

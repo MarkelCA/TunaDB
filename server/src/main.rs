@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use args::Args;
 use clap::Parser;
+use core::serializer::{CommandSerializer, ProtoCommandSerializer};
 use env_logger::Env;
 use prost::Message;
 use std::process::ExitCode;
@@ -29,6 +30,11 @@ async fn main() -> ExitCode {
     }
 }
 
+// TODO: refactor
+fn get_serializer() -> Box<dyn CommandSerializer> {
+    Box::new(ProtoCommandSerializer)
+}
+
 async fn init() -> anyhow::Result<()> {
     let args = Args::parse();
     if !tcp::local_port_available(args.port) {
@@ -40,9 +46,11 @@ async fn init() -> anyhow::Result<()> {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let config = config::parse()?;
     let engine = Arc::new(Mutex::new(storage::new_engine(&config.file_path)?));
+    let command_serializer = Arc::new(get_serializer());
 
     log::info!("Server started");
     loop {
+        let command_serializer = command_serializer.clone();
         let (mut socket, _) = listener.accept().await?;
         let engine = engine.clone(); // Clone the engine pointer for each connection
 
@@ -62,23 +70,36 @@ async fn init() -> anyhow::Result<()> {
                     }
                 };
 
-                let proto_command = core::proto::Command::decode(&buf[0..n]);
+                // TODO: refactor
+                match command_serializer.decode(&buf[0..n]) {
+                    Ok(cmd) => {
+                        log::info!("Received command: {:?}", cmd);
+                        let response = command::run_proto(engine.clone(), cmd).await; // Pass a reference to the engine
+                        let mut buf = Vec::new();
+                        buf.reserve(response.encoded_len());
 
-                if let Err(e) = proto_command {
-                    if let Err(e) = socket.write_all(e.to_string().as_bytes()).await {
-                        log::error!("failed to write to socket; err = {:?}", e);
-                        eprintln!("failed to write to socket; err = {:?}", e);
-                        return;
+                        match response.encode(&mut buf) {
+                            Ok(_) => {
+                                let _ = socket.write_all(&buf).await;
+                            }
+                            Err(e) => {
+                                if let Err(e) = socket.write_all(e.to_string().as_bytes()).await {
+                                    log::error!("failed to encode response; err = {:?}", e);
+                                    eprintln!("failed to encode response; err = {:?}", e);
+                                    return;
+                                }
+                            }
+                        }
                     }
-                    continue;
+                    Err(e) => {
+                        if let Err(e) = socket.write_all(e.to_string().as_bytes()).await {
+                            log::error!("failed to write to socket; err = {:?}", e);
+                            eprintln!("failed to write to socket; err = {:?}", e);
+                            return;
+                        }
+                        continue;
+                    }
                 }
-                let response = command::run_proto(engine.clone(), proto_command.unwrap()).await; // Pass a reference to the engine
-                let mut buf = Vec::new();
-                buf.reserve(response.encoded_len());
-
-                // Unwrap is safe, since we have reserved sufficient capacity in the vector.
-                response.encode(&mut buf).unwrap();
-                let _ = socket.write_all(&buf).await;
             }
         });
     }

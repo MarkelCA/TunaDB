@@ -1,22 +1,20 @@
 extern crate core;
 
-use anyhow::anyhow;
 use anyhow::Error;
 use clap::Parser;
 use core::command::Command;
-use core::proto::command::Operation;
 use core::proto::response::Status;
-use core::proto::Command as ProtoCommand;
 use core::proto::Response;
+use core::serializer::CommandSerializer;
+use core::serializer::ProtoCommandSerializer;
 use prost::Message;
 use std::io::stdin;
 use std::net::TcpStream;
 use std::process::ExitCode;
+use std::str::FromStr;
 
 mod command;
 use std::io::{Read, Write};
-
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -29,9 +27,16 @@ struct CliArgs {
     port: u16,
 }
 
+// TODO: refactor
+fn get_serializer() -> Box<dyn CommandSerializer> {
+    Box::new(ProtoCommandSerializer)
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
     let args = CliArgs::parse();
+
+    let command_serializer = get_serializer();
 
     println!("Connecting to {}:{}...", args.host, args.port);
     let mut stream = match TcpStream::connect(format!("{}:{}", args.host, args.port).as_str()) {
@@ -67,10 +72,8 @@ async fn main() -> ExitCode {
             }
         };
 
-        let cmd = cmd.to_proto_command();
-
         // Send command
-        if let Err(e) = send_command(&cmd, &mut stream) {
+        if let Err(e) = send_command(&cmd, &command_serializer, &mut stream) {
             println!("error: {}", e);
             continue;
         }
@@ -94,10 +97,14 @@ fn print_help() {
     println!("  exit");
 }
 
-fn send_command(cmd: &ProtoCommand, stream: &mut TcpStream) -> Result<(), Error> {
+fn send_command(
+    cmd: &Command,
+    serializer: &Box<dyn CommandSerializer>,
+    stream: &mut TcpStream,
+) -> Result<(), Error> {
     let mut buf = Vec::new();
-    buf.reserve(cmd.encoded_len());
-    cmd.encode(&mut buf)?;
+    buf.reserve(serializer.encoded_len(&cmd));
+    serializer.encode(cmd, &mut buf)?;
     stream.write(&buf)?;
     Ok(())
 }
@@ -108,22 +115,22 @@ fn read_response(stream: &mut TcpStream) -> Result<Response, Error> {
     Ok(Response::decode(&response_bytes[..n])?)
 }
 
-fn print_response(command: ProtoCommand, response: Response) {
+fn print_response(command: Command, response: Response) {
     match response.status() {
         Status::Unespecified => {
             println!("UNSPECIFIED");
         }
-        Status::Ok => match command.operation() {
-            Operation::Get => {
+        Status::Ok => match command {
+            Command::Get { .. } => {
                 println!("{}", response.content());
             }
-            Operation::Set => {
+            Command::Set { .. } => {
                 println!("ok");
             }
-            Operation::Del => {
+            Command::Del { .. } => {
                 println!("ok");
             }
-            Operation::List => {
+            Command::List => {
                 println!("{}", response.content());
             }
         },

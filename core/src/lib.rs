@@ -1,6 +1,7 @@
 pub mod command;
 pub mod config;
 pub mod index;
+pub mod serializer;
 pub mod storage;
 
 pub mod proto {
