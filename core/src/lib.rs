@@ -1,6 +1,7 @@
 pub mod command;
 pub mod config;
 pub mod index;
+pub mod response;
 pub mod serializer;
 pub mod storage;
 

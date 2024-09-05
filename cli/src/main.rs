@@ -3,11 +3,11 @@ extern crate core;
 use anyhow::Error;
 use clap::Parser;
 use core::command::Command;
-use core::proto::response::Status;
-use core::proto::Response;
+use core::response::Response;
+use core::response::Status;
 use core::serializer::CommandSerializer;
 use core::serializer::ProtoCommandSerializer;
-use prost::Message;
+use core::serializer::ResponseSerializer;
 use std::io::stdin;
 use std::net::TcpStream;
 use std::process::ExitCode;
@@ -28,15 +28,20 @@ struct CliArgs {
 }
 
 // TODO: refactor
-fn get_serializer() -> Box<dyn CommandSerializer> {
+fn new_command_serializer() -> Box<dyn CommandSerializer> {
     Box::new(ProtoCommandSerializer)
+}
+
+fn new_response_serializer() -> Box<dyn ResponseSerializer> {
+    Box::new(core::serializer::ProtoResponseSerializer)
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
     let args = CliArgs::parse();
 
-    let command_serializer = get_serializer();
+    let command_serializer = new_command_serializer();
+    let response_serializer = new_response_serializer();
 
     println!("Connecting to {}:{}...", args.host, args.port);
     let mut stream = match TcpStream::connect(format!("{}:{}", args.host, args.port).as_str()) {
@@ -79,7 +84,7 @@ async fn main() -> ExitCode {
         }
 
         // Read response
-        match read_response(&mut stream) {
+        match read_response(&mut stream, &response_serializer) {
             Ok(response) => print_response(cmd, response),
             Err(e) => println!("error: {}", e),
         }
@@ -109,34 +114,53 @@ fn send_command(
     Ok(())
 }
 
-fn read_response(stream: &mut TcpStream) -> Result<Response, Error> {
+fn read_response(
+    stream: &mut TcpStream,
+    serializer: &Box<dyn ResponseSerializer>,
+) -> Result<Response, Error> {
     let mut response_bytes = [0; 128];
     let n = stream.read(&mut response_bytes)?;
-    Ok(Response::decode(&response_bytes[..n])?)
+    Ok(serializer.decode(&response_bytes[..n])?)
+    // Ok(Response::decode(&response_bytes[..n])?)
 }
 
 fn print_response(command: Command, response: Response) {
-    match response.status() {
+    match response.status {
         Status::Unespecified => {
             println!("UNSPECIFIED");
         }
         Status::Ok => match command {
-            Command::Get { .. } => {
-                println!("{}", response.content());
-            }
+            Command::Get { .. } => match response.content {
+                Some(content) => {
+                    println!("{}", content);
+                }
+                None => {
+                    println!("(nil)");
+                }
+            },
             Command::Set { .. } => {
                 println!("ok");
             }
             Command::Del { .. } => {
                 println!("ok");
             }
-            Command::List => {
-                println!("{}", response.content());
+            Command::List => match response.content {
+                Some(content) => {
+                    println!("{}", content);
+                }
+                None => {
+                    println!("(nil)");
+                }
+            },
+        },
+        Status::Error => match response.content {
+            Some(content) => {
+                println!("error: {}", content);
+            }
+            None => {
+                println!("(nil)");
             }
         },
-        Status::Error => {
-            println!("error: {}", response.content());
-        }
         Status::NotFound => {
             println!("(nil)");
         }
