@@ -14,6 +14,7 @@ use crate::storage::VALUE_LENGTH_SIZE;
 pub trait OffsetIndexer: Send {
     async fn get(&self, key: &str) -> Result<Option<String>, Error>;
     async fn set(&mut self, key: &str, offset: u64);
+    async fn delete(&mut self, key: &str);
 }
 
 #[derive(Clone)]
@@ -63,5 +64,9 @@ impl OffsetIndexer for BinaryOffsetIndexer {
 
     async fn set(&mut self, key: &str, offset: u64) {
         self.offsets.insert(key.to_string(), offset);
+    }
+
+    async fn delete(&mut self, key: &str) {
+        self.offsets.remove(key);
     }
 }
