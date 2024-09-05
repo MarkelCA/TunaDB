@@ -1,5 +1,6 @@
+use crate::response::{Response, Status};
 use crate::{
-    proto::{self, command::Operation, Response},
+    proto::{self, command::Operation},
     storage::Engine,
 };
 use anyhow::anyhow;
@@ -135,36 +136,36 @@ pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) ->
         Command::Get { key } => match engine.lock().await.get(&key).await {
             Ok(value) => match value {
                 Some(v) => Response {
-                    status: proto::response::Status::Ok as i32,
+                    status: Status::Ok,
                     content: Some(v),
                 },
                 None => Response {
-                    status: proto::response::Status::NotFound as i32,
+                    status: Status::NotFound,
                     content: None,
                 },
             },
             Err(e) => Response {
-                status: proto::response::Status::Error as i32,
+                status: Status::Error,
                 content: Some(format!("error: {}", e)),
             },
         },
         Command::Set { key, value } => match engine.lock().await.set(&key, &value).await {
             Ok(_) => Response {
-                status: proto::response::Status::Ok as i32,
+                status: Status::Ok,
                 content: None,
             },
             Err(e) => Response {
-                status: proto::response::Status::Error as i32,
+                status: Status::Error,
                 content: Some(format!("error: {}", e)),
             },
         },
         Command::Del { key } => match engine.lock().await.delete(&key).await {
             Ok(_) => Response {
-                status: proto::response::Status::Ok as i32,
+                status: Status::Ok,
                 content: None,
             },
             Err(e) => Response {
-                status: proto::response::Status::Error as i32,
+                status: Status::Error,
                 content: Some(format!("error: {}", e)),
             },
         },
@@ -182,7 +183,7 @@ pub async fn run_proto(engine: Arc<Mutex<Box<dyn Engine>>>, command: Command) ->
                 }
             }
             Response {
-                status: proto::response::Status::Ok as i32,
+                status: Status::Ok,
                 content: Some(result),
             }
         }

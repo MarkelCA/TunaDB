@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use args::Args;
 use clap::Parser;
-use core::serializer::{CommandSerializer, ProtoCommandSerializer};
+use core::serializer::{CommandSerializer, ProtoCommandSerializer, ResponseSerializer};
 use env_logger::Env;
 use prost::Message;
 use std::process::ExitCode;
@@ -31,8 +31,13 @@ async fn main() -> ExitCode {
 }
 
 // TODO: refactor
-fn get_serializer() -> Box<dyn CommandSerializer> {
+fn new_command_serializer() -> Box<dyn CommandSerializer> {
     Box::new(ProtoCommandSerializer)
+}
+
+// TODO: refactor
+fn new_response_serializer() -> Box<dyn ResponseSerializer> {
+    Box::new(core::serializer::ProtoResponseSerializer)
 }
 
 async fn init() -> anyhow::Result<()> {
@@ -46,11 +51,13 @@ async fn init() -> anyhow::Result<()> {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let config = config::parse()?;
     let engine = Arc::new(Mutex::new(storage::new_engine(&config.file_path)?));
-    let command_serializer = Arc::new(get_serializer());
+    let command_serializer = Arc::new(new_command_serializer());
+    let response_serializer = Arc::new(new_response_serializer());
 
     log::info!("Server started");
     loop {
         let command_serializer = command_serializer.clone();
+        let response_serializer = response_serializer.clone();
         let (mut socket, _) = listener.accept().await?;
         let engine = engine.clone(); // Clone the engine pointer for each connection
 
@@ -76,9 +83,9 @@ async fn init() -> anyhow::Result<()> {
                         log::info!("Received command: {:?}", cmd);
                         let response = command::run_proto(engine.clone(), cmd).await; // Pass a reference to the engine
                         let mut buf = Vec::new();
-                        buf.reserve(response.encoded_len());
+                        buf.reserve(response_serializer.encoded_len(&response));
 
-                        match response.encode(&mut buf) {
+                        match response_serializer.encode(&response, &mut buf) {
                             Ok(_) => {
                                 let _ = socket.write_all(&buf).await;
                             }

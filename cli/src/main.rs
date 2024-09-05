@@ -32,6 +32,7 @@ fn new_command_serializer() -> Box<dyn CommandSerializer> {
     Box::new(ProtoCommandSerializer)
 }
 
+// TODO: refactor
 fn new_response_serializer() -> Box<dyn ResponseSerializer> {
     Box::new(core::serializer::ProtoResponseSerializer)
 }
