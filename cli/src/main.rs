@@ -121,7 +121,6 @@ fn read_response(
     let mut response_bytes = [0; 128];
     let n = stream.read(&mut response_bytes)?;
     Ok(serializer.decode(&response_bytes[..n])?)
-    // Ok(Response::decode(&response_bytes[..n])?)
 }
 
 fn print_response(command: Command, response: Response) {

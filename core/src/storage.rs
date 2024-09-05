@@ -249,6 +249,7 @@ impl Engine for BinaryEngineV1 {
         bytes.push(1);
 
         self.file.lock().await.write_all(&bytes)?;
+        self.indexer.delete(key).await;
         Ok(())
     }
 }
