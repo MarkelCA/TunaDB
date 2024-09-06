@@ -4,7 +4,7 @@ A key-value store written in Rust for learning purposes. Inspired by the book "D
 ### Technical details
 It currently uses a simple length-prefixed binary encoding format for storage files and an in-memory byte offset HashMap as its indexing strategy. The server communicates with clients over TCP sockets and uses protocol buffers for data serialization.
 
-Implementation details, including the storage/indexing algorithms and communication protocols, are abstracted and subject to change. There are plans to implement more sophisticated data structures, such as B-Trees and LSM-Trees, in the future, as well as a custom protocol for communication between the server and client.
+Implementation details, including the storage/indexing algorithms and communication protocols, are abstracted and subject to change. There are plans to implement more sophisticated data structures, such as B-Trees and LSM-Trees, in the future, as well as a custom communication protocol.
 ## Build
 
 ### Requirements
