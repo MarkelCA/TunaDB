@@ -1,6 +1,5 @@
 # TunaDB 🐟
-A key-value store written in Rust for learning purposes. Inspired by the book "Designing Data-Intensive Applications" by Martin Kleppmann.
-
+A disk-based key-value store written in Rust, created for learning purposes.
 ### Technical details
 It currently uses a simple length-prefixed binary encoding format for storage files and an in-memory byte offset HashMap as its indexing strategy. The server communicates with clients over TCP sockets and uses protocol buffers for data serialization.
 
